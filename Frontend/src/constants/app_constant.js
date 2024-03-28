@@ -1,0 +1,13 @@
+export const IS_DEBUG = true;
+export const PIXEL_SIZE = 1
+export const BOARD_SIZE = 1000;
+export const ZOOM_MAX = 50;
+export const ZOOM_FACTOR = 1.732;
+export const ZOOM_RENDER_MODE_THRESHOLD = 1;
+export const MIN_ZOOM_FOR_SCALE_ANIMATION = 21;
+export const SCALE_ANIMATION_ZOOM_FACTOR = 1.275;
+export const BOARD_TRANSFORM_ANIMATION_DURATION = 700;
+export const DEFAULT_GROUP = 'EN';
+export const GROUP_DETAILS = [['EN', 'English'],['TR', 'Turkish']];
+export const CHAT_COLOR_PALETTE = ['#ff1744', '#f50057', '#d500f9', '#651fff', '#3d5afe', '#2979ff', '#008573', '#008c3a', '#ff6d00', '#dd2c00'];
+export const BOARD_COLOR_PALETTE = [0xffffffff, 0xffd9d7d4, 0xff908d89, 0xff000000, 0xff27699c, 0xff2e486d, 0xffa998ff, 0xff8138ff, 0xffc04ab3, 0xff9f1e81, 0xffff5c6b, 0xffc13a4a, 0xfff4e951, 0xffe98f36, 0xffa35023, 0xffaa9e00, 0xff6f7500, 0xff56ed7f, 0xff77cc00, 0xff68a400, 0xff35d6ff, 0xff00a8ff, 0xff0045ff, 0xff3800bd];

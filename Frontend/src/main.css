@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind utilities;
+@tailwind components;
+
+@layer base {
+    ion-icon {
+        font-size: 28px;
+    }
+
+    @media screen and (min-width: 640px) {
+        ion-icon {
+            font-size: 32px;
+        }
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c8c8c8;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #b4b4b4;
+    }
+}
+
+@layer components {
+    .palette-cbox {
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        border: 2px solid black;
+    }
+
+    .shadow-dropdown {
+        box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px, rgba(0, 0, 0, 0.23) 0px 3px 6px;
+    }
+}
