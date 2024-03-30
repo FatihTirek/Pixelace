@@ -3,7 +3,7 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("CUSTOMCONNSTR_Redis")!).GetDatabase());
+builder.Services.AddSingleton(ConnectionMultiplexer.Connect(Environment.GetEnvironmentVariable("CUSTOMCONNSTR_Redis")!).GetDatabase());
 builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
 builder.Services.AddControllers();
