@@ -1,4 +1,3 @@
-export const IS_DEBUG = true;
 export const PIXEL_SIZE = 1
 export const BOARD_SIZE = 1000;
 export const ZOOM_MAX = 50;
