@@ -1,8 +1,4 @@
-import { IS_DEBUG } from "./app_constant";
-
-const DOMAIN_LOCALHOST = 'http://localhost:5027/';
-const DOMAIN_PRODUCTION = 'https://pixelace-api.azurewebsites.net/';
-const DOMAIN = IS_DEBUG ? DOMAIN_LOCALHOST : DOMAIN_PRODUCTION;
+const DOMAIN = 'https://pixelace.azurewebsites.net/';
 
 const CHAT_API = DOMAIN + 'api/chat';
 const BOARD_API = DOMAIN + 'api/board';

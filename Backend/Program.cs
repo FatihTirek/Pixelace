@@ -3,7 +3,7 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!).GetDatabase());
+builder.Services.AddSingleton(ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("CUSTOMCONNSTR_Redis")!).GetDatabase());
 builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 
 builder.Services.AddEndpointsApiExplorer();
@@ -13,14 +13,6 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseCors(builder => builder.WithOrigins("http://127.0.0.1:5500").AllowAnyHeader().AllowAnyMethod().AllowCredentials());
 
 app.MapControllers();
 app.MapHub<ChatHub>("hub/chat");
