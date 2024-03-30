@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -24,11 +24,9 @@ jobs:
 
       - name: Build with dotnet
         run: dotnet build --configuration Release
-        working-directory: Backend/
 
       - name: dotnet publish
         run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
-        working-directory: Backend/
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
@@ -37,7 +35,7 @@ jobs:
           path: ${{env.DOTNET_ROOT}}/myapp
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build
     environment:
       name: 'Production'
@@ -54,9 +52,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0888CC13BC164ECDB833F8D01F6F3093 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6B0BAE0C6F1945B88DE5CF9FF1A8B344 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BC6223738D5E46ADAAB03F90FE330425 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_07199C244BDD483FA698EBCA4F40E6BC }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AD3BA5901DD84923B28146DD67EFF132 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0CA76BACF14A47F8AD8CC99E21083919 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
