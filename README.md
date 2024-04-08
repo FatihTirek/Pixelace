@@ -1,3 +1,3 @@
 # Pixelace - Reddit r/Place Clone
 
-This project replicates the basic functionality of Reddit's r/place, where users can place colored pixels on a shared canvas to create collaborative artwork. Additionally, I've integrated a chat feature that enables users to communicate with each other while working on the canvas.  
+Inspired by Reddit's r/place, I developed a social experiment platform where users can create collaborative artworks by placing colored pixels on a shared canvas. Additionally, I've integrated a chat feature that enables users to communicate with each other while working on the canvas. 
