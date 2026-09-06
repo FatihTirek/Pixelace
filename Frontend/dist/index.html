@@ -21,21 +21,21 @@
     </div>
 
     <div id="content-main" class="hidden w-full h-full bg-neutral-700">
-        <div id="posale"
+        <div id="canvas-info"
             class="fixed top-6 left-1/2 w-[156px] py-1 text-center z-[1] -translate-x-1/2 border-2 border-black bg-white font-mono font-bold text-sm sm:text-base">
             <span></span>
             <span></span>
         </div>
 
         <main id="scene" class="fixed w-full h-full">
-            <div id="board-wrapper" class="absolute top-1/2 left-1/2 origin-top-left">
-                <canvas id="canvas" width="1000" height="1000"></canvas>
-                <img id="pixel-select" class="absolute top-0 left-0 w-[1px] h-[1px] z-[1] pointer-events-none" src="./assets/pixel-select.svg">
-                <div id="pixel-preview" class="absolute top-0 left-0 w-[1px] h-[1px] z-[2] invisible overflow-hidden"></div>
+            <div id="canvas-wrapper" class="absolute top-1/2 left-1/2 origin-top-left pixelated" style="image-rendering: -webkit-optimize-contrast; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; image-rendering: pixelated;">
+                <canvas id="canvas" width="1000" height="1000" class="w-full h-full block pixelated" style="image-rendering: -webkit-optimize-contrast; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; image-rendering: pixelated;"></canvas>
+                <img id="pixel-cursor" class="absolute top-0 left-0 z-[1] pointer-events-none" src="./assets/pixel-select.svg">
+                <div id="pixel-preview" class="absolute top-0 left-0 z-[2] invisible overflow-hidden"></div>
             </div>
         </main>
 
-        <button id="place"
+        <button id="place-tile-btn"
             class="fixed bottom-6 left-1/2 px-6 py-1 text-center cursor-pointer z-[1] -translate-x-1/2 border-2 border-black bg-white font-mono font-bold text-sm sm:text-base"
             type="button">Place a tile</button>
 
@@ -50,7 +50,7 @@
                 <div class="flex items-center gap-3 font-inter">
                     <h1 class="font-semibold text-2xl">Live Chat</h1>
                     <div class="relative inline-block">
-                        <div id="chat-lang" data-group="EN"
+                        <div id="chat-lang" data-room="EN"
                             class="flex items-center gap-1 px-1 rounded-[2px] cursor-pointer border-2 border-neutral-200 bg-neutral-50">
                         </div>
                         <div id="chat-dropdown" class="hidden absolute z-[1] p-2 bg-white shadow-dropdown">
@@ -80,9 +80,16 @@
     </div>
 
     <script type="module" src="output.js"></script>
-    <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
-    <script defer src="/_vercel/insights/script.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            const s = document.createElement('script');
+            s.defer = true;
+            s.src = '/_vercel/insights/script.js';
+            document.head.appendChild(s);
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </body>

@@ -1,17 +1,29 @@
-import * as http from "../utils/http.js";
-import { CHAT_API_CACHE_MESSAGE, CHAT_API_GET_MESSAGES, CHAT_HUB } from "../constants/api_constant.js";
-import { GROUP_DETAILS, DEFAULT_GROUP, CHAT_COLOR_PALETTE } from "../constants/app_constant.js";
+import { CHAT_HUB } from "../constants/api_constant.js";
+import { ROOM_DETAILS, DEFAULT_ROOM, CHAT_COLOR_PALETTE, getOrCreateGuestId } from "../constants/app_constant.js";
 
 let user = JSON.parse(localStorage.getItem('user'));
+const guestId = getOrCreateGuestId();
 
-const connectedGroups = [];
-const connection = new signalR.HubConnectionBuilder().withUrl(CHAT_HUB).build();
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${CHAT_HUB}?userId=${encodeURIComponent(guestId)}`)
+    .withAutomaticReconnect([0, 2000, 5000, 10000])
+    .build();
 
 const chat = document.getElementById('chat');
 const clang = document.getElementById('chat-lang');
 const cbody = document.getElementById('chat-body');
 const cinput = document.getElementById('chat-input');
 const cdropdown = document.getElementById('chat-dropdown');
+
+const chatState = {
+    activeRoom: localStorage.getItem('pixelace_lang') || DEFAULT_ROOM,
+    rooms: {
+        'EN': [],
+        'TR': []
+    }
+};
+
+const isConnected = () => connection.state === signalR.HubConnectionState.Connected;
 
 async function openChat() {
     const connectToHub = async () => {
@@ -22,139 +34,185 @@ async function openChat() {
             cbody.style.alignItems = 'center';
             cbody.innerHTML = '<img src="./assets/spinners/ring.svg" width="80" height="80" alt="Spinner">';
 
-            await connection.start();
-            await changeChatGroup(DEFAULT_GROUP);
-
-            cbody.style.justifyContent = 'flex-start';
-            cbody.style.alignItems = 'flex-start';
-            cbody.innerHTML = '';
-        }
-    }
-
-    if (user?.username) connectToHub();
-    else promptUser(connectToHub);
-}
-
-function closeChat() {
-    chat.style.transform = 'translate(100%, 0)';
-    cdropdown.style.display = 'none';
-}
-
-function openDropdownMenu(e) {
-    e.stopPropagation();
-    cdropdown.style.display = 'flex';
-}
-
-function closeDropdownMenu(e) {
-    e.stopPropagation();
-    cdropdown.style.display = 'none';
-}
-
-function isConnected() {
-    return connection.state === signalR.HubConnectionState.Connected;
-}
-
-function promptUser(onSuccess) {
-    const username = prompt('Enter a username');
-    const color = user?.color ? user.color : CHAT_COLOR_PALETTE[Math.floor(Math.random() * CHAT_COLOR_PALETTE.length)];
-
-    if (username && username.length > 0 && username.length < 56) {
-        user = { username: username, color: color };
-        localStorage.setItem('user', JSON.stringify(user));
-        onSuccess();
-    } else alert('It cannot be empty and greater than 56 chars');
-}
-
-function sendGroupMessage() {
-    if (isConnected()) {
-        const payload = {
-            group: clang.dataset.group,
-            username: user.username,
-            text: cinput.value,
-            color: user.color,
-        };
-
-        connection.invoke('SendGroupMessage', payload);
-        onReceiveGroupMessage(payload);
-    } else alert('Can\'t connect to chat server');
-
-    cinput.value = '';
-}
-
-function onReceiveGroupMessage(message) {
-    const params = { connectionId: connection.connectionId };
-
-    if (message.group === clang.dataset.group) fillChatBody(message);
-    http.post(CHAT_API_CACHE_MESSAGE, message, params);
-}
-
-async function onSelectDropdownItem(e, group) {
-    if (isConnected()) {
-        if (group !== clang.dataset.group) {
-            cbody.innerHTML = '';
-
             try {
-                const params = { connectionId: connection.connectionId, group: group };
-                const request = await http.get(CHAT_API_GET_MESSAGES, params);
-                const messages = await request.json();
+                await connection.start();
 
-                for (const message of messages) fillChatBody(JSON.parse(message));
-            } catch (error) {
-                alert('Couldn\'t fetch previous messages');
-            } finally {
-                await changeChatGroup(group);
+                for (const [room] of ROOM_DETAILS) {
+                    try {
+                        const history = await connection.invoke('JoinRoom', room);
+                        chatState.rooms[room] = history || [];
+                    } catch (err) {
+                        console.warn(`Failed to join room ${room}:`, err);
+                    }
+                }
 
-                clang.children[0].src = `./assets/flags/${group}.png`;
-                clang.children[1].innerHTML = group;
+                // 2. Render initial active room messages
+                switchChatRoom(chatState.activeRoom);
+            } catch (err) {
+                console.error('Failed to connect to Chat Hub', err);
+                cbody.innerHTML = '<p class="text-neutral-500">Could not connect to chat server.</p>';
             }
         }
-    } else alert('Can\'t connect to chat server');
+    };
 
-    closeDropdownMenu(e);
-}
-
-async function changeChatGroup(group) {
-    clang.setAttribute('data-group', group);
-
-    if (!connectedGroups.some((e) => e === group)) {
-        await connection.invoke('AddToGroup', group);
-        connection.on('ReceiveGroupMessage' + group, (message) => onReceiveGroupMessage(message));
-        connectedGroups.push(group);
+    if (user?.username) {
+        connectToHub();
+    } else {
+        promptUser(connectToHub);
     }
 }
 
-function fillChatBody(message) {
-    const span = document.createElement('span');
-    span.style.userSelect = 'text';
-    span.innerHTML = `<span class="mr-1" style="color: ${message.color};">[${message.username}]:</span>${message.text}`;
+const closeChat = () => { chat.style.transform = 'translate(100%, 0)'; cdropdown.style.display = 'none'; };
+const openDropdownMenu = e => { e.stopPropagation(); cdropdown.style.display = 'flex'; };
+const closeDropdownMenu = e => { if (e) e.stopPropagation(); cdropdown.style.display = 'none'; };
 
-    cbody.appendChild(span);
+function promptUser(onSuccess) {
+    const input = prompt('Enter a username');
+    const username = input ? input.trim() : '';
+    const color = user?.color ? user.color : CHAT_COLOR_PALETTE[Math.floor(Math.random() * CHAT_COLOR_PALETTE.length)];
+
+    if (username.length > 0 && username.length <= 30) {
+        user = { username, color };
+        localStorage.setItem('user', JSON.stringify(user));
+        onSuccess();
+    } else {
+        alert('Username cannot be empty and must be 30 characters or fewer.');
+    }
+}
+
+async function sendRoomMessage() {
+    const text = cinput.value ? cinput.value.trim() : '';
+    if (!text) return;
+
+    if (!isConnected()) {
+        alert('Cannot connect to chat server.');
+        return;
+    }
+
+    const payload = {
+        room: chatState.activeRoom,
+        username: user.username,
+        text: text,
+        color: user.color,
+    };
+
+    try {
+        await connection.invoke('SendRoomMessage', payload);
+        cinput.value = '';
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        alert('Failed to send message.');
+    }
+}
+
+// Global SignalR message listener
+connection.on('ReceiveChatMessage', (message) => {
+    const room = message.room;
+    if (!chatState.rooms[room]) {
+        chatState.rooms[room] = [];
+    }
+
+    // 1. Always append to in-memory ring buffer (up to 250 items)
+    chatState.rooms[room].push(message);
+    if (chatState.rooms[room].length > 250) {
+        chatState.rooms[room].shift();
+    }
+
+    // 2. If active room, render immediately to DOM
+    if (room === chatState.activeRoom) {
+        appendMessageToDom(message);
+    }
+});
+
+function switchChatRoom(room) {
+    chatState.activeRoom = room;
+    localStorage.setItem('pixelace_lang', room);
+
+    updateDropdownDisplay(room);
+
+    // Clear DOM and hydrate from in-memory cache with 0ms latency
+    cbody.style.justifyContent = 'flex-start';
+    cbody.style.alignItems = 'flex-start';
+    cbody.innerHTML = '';
+
+    const messages = chatState.rooms[room] || [];
+    for (const msg of messages) {
+        appendMessageToDom(msg);
+    }
+
+    cbody.scrollTop = cbody.scrollHeight;
+}
+
+// XSS-immune message appending with textContent & DOM nodes
+function appendMessageToDom(message) {
+    const p = document.createElement('p');
+    p.className = 'break-words leading-tight';
+
+    const userSpan = document.createElement('span');
+    userSpan.className = 'font-bold mr-1 select-text';
+    userSpan.style.color = CHAT_COLOR_PALETTE.includes(message.color) ? message.color : '#008573';
+    userSpan.textContent = `[${message.username}]: `;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'select-text';
+    textSpan.textContent = message.text;
+
+    p.appendChild(userSpan);
+    p.appendChild(textSpan);
+    cbody.appendChild(p);
+
+    // DOM Capped Window: Never allow more than 250 nodes in chat body
+    while (cbody.children.length > 250) {
+        cbody.removeChild(cbody.firstChild);
+    }
+
+    cbody.scrollTop = cbody.scrollHeight;
+}
+
+function updateDropdownDisplay(room) {
+    clang.setAttribute('data-room', room);
+    if (clang.children[0]) {
+        clang.children[0].src = `./assets/flags/${room}.png`;
+    }
+    if (clang.children[1]) {
+        clang.children[1].innerHTML = room;
+    }
 }
 
 export function drawDropdownFlag() {
+    clang.innerHTML = '';
+    const initialRoom = chatState.activeRoom;
+
     const img = document.createElement('img');
+    img.src = `./assets/flags/${initialRoom}.png`;
+    img.alt = initialRoom;
+
     const span = document.createElement('span');
-
-    img.src = `./assets/flags/${DEFAULT_GROUP}.png`;
-
     span.className = 'font-inter font-medium text-sm';
-    span.innerHTML = DEFAULT_GROUP;
+    span.innerHTML = initialRoom;
 
     clang.appendChild(img);
     clang.appendChild(span);
-    clang.setAttribute('data-group', DEFAULT_GROUP);
+    clang.setAttribute('data-room', initialRoom);
 }
 
 export function fillDropdownMenu() {
-    for (const [group, language] of GROUP_DETAILS) {
+    const list = cdropdown.children[0];
+    list.innerHTML = '';
+
+    for (const [room, language] of ROOM_DETAILS) {
         const li = document.createElement('li');
 
-        li.onclick = (e) => onSelectDropdownItem(e, group);
-        li.className = 'flex items-center justify-between gap-12 cursor-pointer';
+        li.onclick = (e) => {
+            e.stopPropagation();
+            switchChatRoom(room);
+            closeDropdownMenu(e);
+        };
+        li.className = 'flex items-center justify-between gap-8 cursor-pointer p-1 hover:bg-neutral-100 rounded';
         li.innerHTML = `<span class="font-medium text-sm">${language}</span>
-                        <img class="max-w-none" src="./assets/flags/${group}.png" alt="${language}">`;
+                        <img class="max-w-none" src="./assets/flags/${room}.png" alt="${language}">`;
 
-        cdropdown.children[0].appendChild(li);
+        list.appendChild(li);
     }
 }
 
@@ -163,12 +221,12 @@ window.addEventListener('load', () => {
     cinput.onkeydown = (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            sendGroupMessage();
+            sendRoomMessage();
         }
-    }
-    chat.onclick = (_) => {
+    };
+    chat.onclick = () => {
         cdropdown.style.display = 'none';
-    }
+    };
 
     document.getElementById('chat-open').onclick = openChat;
     document.getElementById('chat-close').onclick = closeChat;

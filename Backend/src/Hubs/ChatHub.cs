@@ -1,18 +1,35 @@
-using Backend.src.Models;
+using Backend.src.DTOs;
+using Backend.src.Helpers;
+using Backend.src.Hubs.Clients;
+using Backend.src.Services;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Backend.src.Hubs
 {
-    public class ChatHub : Hub
+    public class ChatHub(ChatService service) : Hub<IChatClient>
     {
-        public async Task SendGroupMessage(Message message)
+        public async Task<bool> SendRoomMessage(SendMessageRequest request)
         {
-            await Clients.OthersInGroup(message.Group).SendAsync("ReceiveGroupMessage" + message.Group, message);
+            var message = await service.AddMessageAsync(request);
+            if (message == null)
+            {
+                return false;
+            }
+
+            await Clients.Group(message.Room).ReceiveChatMessage(message);
+            return true;
         }
 
-        public async Task AddToGroup(string group)
+        public async Task<List<ChatMessageResponse>> JoinRoom(string room)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, group);
+            room = ChatHelper.NormalizeRoom(room);
+            await Groups.AddToGroupAsync(Context.ConnectionId, room);
+            return await service.GetRecentMessagesAsync(room);
+        }
+
+        public async Task LeaveRoom(string room)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, ChatHelper.NormalizeRoom(room));
         }
     }
 }

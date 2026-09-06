@@ -1,32 +1,40 @@
 import * as curve from "../utils/curve.js";
 import * as app from "../constants/app_constant.js";
-import { applyBoardScale, applyBoardTranslate, applyBoardRenderingMode } from "./board.js";
+import { applyCanvasScale, applyCanvasTranslate, applyCanvasRenderingMode } from "./canvas.js";
 
 let panning = false;
 let pinching = false;
 let mousemoved = false;
 let startPanOrPinch = {};
-let minZoom = Math.min(innerWidth, innerHeight) / (app.BOARD_SIZE * 2);
+let minZoom = Math.min(innerWidth, innerHeight) / (app.CANVAS_SIZE * 2);
 
-const board = { offset: { x: 0, y: 0 }, zoom: minZoom };
-const boardEl = document.getElementById('board-wrapper');
+const camera = { offset: { x: 0, y: 0 }, zoom: minZoom };
+const canvasWrapper = document.getElementById('canvas-wrapper');
+
+let currentAnimationId = null;
 
 function getPinchObject(e) {
-    const x = e.touches[0].clientX + e.touches[1].clientX;
-    const y = e.touches[0].clientY + e.touches[1].clientY;
+    const x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     const distance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
 
     return { x: x, y: y, distance: distance };
 }
 
 function getPanObject(e) {
-    const x = e instanceof TouchEvent ? e.touches[0].clientX : e.clientX;
-    const y = e instanceof TouchEvent ? e.touches[0].clientY : e.clientY;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const y = e.touches ? e.touches[0].clientY : e.clientY;
 
     return { x: x, y: y };
 }
 
-function onMouseUp() {
+function onMouseUp(e) {
+    if (e.touches && e.touches.length === 1) {
+        pinching = false;
+        panning = true;
+        startPanOrPinch = getPanObject(e);
+        return;
+    }
     panning = false;
     pinching = false;
 }
@@ -34,7 +42,7 @@ function onMouseUp() {
 function onMouseDown(e) {
     panning = true;
     mousemoved = false;
-    pinching = e instanceof TouchEvent && e.touches.length === 2;
+    pinching = Boolean(e.touches && e.touches.length === 2);
     startPanOrPinch = pinching ? getPinchObject(e) : getPanObject(e);
 }
 
@@ -43,105 +51,103 @@ function onMouseMove(e) {
 
     if (panning) {
         const newPanOrPinch = pinching ? getPinchObject(e) : getPanObject(e);
-        const x = (newPanOrPinch.x - startPanOrPinch.x) / board.zoom;
-        const y = (newPanOrPinch.y - startPanOrPinch.y) / board.zoom;
+        const x = (newPanOrPinch.x - startPanOrPinch.x) / camera.zoom;
+        const y = (newPanOrPinch.y - startPanOrPinch.y) / camera.zoom;
 
         if (pinching) {
-            const value = newPanOrPinch.distance / startPanOrPinch.distance * board.zoom;
-            const newZoom = Math.max(Math.min(value, app.ZOOM_MAX), minZoom)
+            const value = newPanOrPinch.distance / startPanOrPinch.distance * camera.zoom;
+            const newZoom = Math.max(Math.min(value, app.ZOOM_MAX), minZoom);
 
-            board.zoom = newZoom;
+            camera.zoom = newZoom;
 
-            applyBoardScale(board);
-            applyBoardRenderingMode(board);
+            applyCanvasScale(camera);
+            applyCanvasRenderingMode(camera);
         }
 
         startPanOrPinch = newPanOrPinch;
 
-        setBoardOffset(x, y);
-        applyBoardTranslate(board);
+        setCanvasOffset(x, y);
+        applyCanvasTranslate(camera);
     }
 }
 
 function onWheel(e) {
     e.preventDefault();
 
-    const value = Math.sign(-e.deltaY) > 0 ? board.zoom * app.ZOOM_FACTOR : board.zoom / app.ZOOM_FACTOR;
-    const newZoom = Math.max(Math.min(value, app.ZOOM_MAX), minZoom)
+    // Smooth proportional zoom for both trackpad (pinch/scroll) and mouse wheel
+    const zoomMultiplier = e.ctrlKey ? 0.01 : 0.0025;
+    const factor = Math.exp(-e.deltaY * zoomMultiplier);
+    const newZoom = Math.max(Math.min(camera.zoom * factor, app.ZOOM_MAX), minZoom);
 
-    const offset = getMouseOffsetRelativeBoardOrigin(e);
-    const x = (offset.x / newZoom) - (offset.x / board.zoom);
-    const y = (offset.y / newZoom) - (offset.y / board.zoom);
+    const offset = getMouseOffsetRelativeCanvasOrigin(e);
+    const x = (offset.x / newZoom) - (offset.x / camera.zoom);
+    const y = (offset.y / newZoom) - (offset.y / camera.zoom);
 
-    board.zoom = newZoom;
+    camera.zoom = newZoom;
 
-    setBoardOffset(x, y);
-    applyBoardScale(board);
-    applyBoardTranslate(board);
-    applyBoardRenderingMode(board);
+    setCanvasOffset(x, y);
+    applyCanvasScale(camera);
+    applyCanvasTranslate(camera);
+    applyCanvasRenderingMode(camera);
 }
 
 function goToPixel(e) {
     if (!mousemoved) {
-        const offset = getMouseOffsetRelativeBoardOrigin(e);
-        const x = -(offset.x - board.offset.x * board.zoom) / board.zoom;
-        const y = -(offset.y - board.offset.y * board.zoom) / board.zoom;
+        const offset = getMouseOffsetRelativeCanvasOrigin(e);
+        const x = -(offset.x - camera.offset.x * camera.zoom) / camera.zoom;
+        const y = -(offset.y - camera.offset.y * camera.zoom) / camera.zoom;
 
-        const start = { x: board.offset.x, y: board.offset.y }
-        const end = { x: x, y: y }
+        const start = { x: camera.offset.x, y: camera.offset.y };
+        const end = { x: x, y: y };
+        const apply = value => { camera.offset = value; applyCanvasTranslate(camera); };
 
-        function apply(value) {
-            board.offset = value;
-            applyBoardTranslate(board);
-        }
-
-        animate(app.BOARD_TRANSFORM_ANIMATION_DURATION, curve.easeOutCubic, start, end, apply);
+        animate(app.CANVAS_TRANSFORM_ANIMATION_DURATION, curve.easeOutCubic, start, end, apply);
     }
 }
 
 export function zoomInToPixel() {
-    if (board.zoom < app.MIN_ZOOM_FOR_SCALE_ANIMATION) {
+    if (camera.zoom < app.MIN_ZOOM_FOR_SCALE_ANIMATION) {
         let result = 0;
         let i = 0;
 
         while (result < app.MIN_ZOOM_FOR_SCALE_ANIMATION) {
-            result = board.zoom * app.SCALE_ANIMATION_ZOOM_FACTOR ** i;
+            result = camera.zoom * app.SCALE_ANIMATION_ZOOM_FACTOR ** i;
             i += 1;
         }
 
-        const start = board.zoom;
+        const start = camera.zoom;
         const end = result;
+        const apply = value => { camera.zoom = value; applyCanvasScale(camera); applyCanvasRenderingMode(camera); };
 
-        function apply(value) {
-            board.zoom = value;
-            applyBoardScale(board);
-            applyBoardRenderingMode(board);
-        }
-
-        animate(app.BOARD_TRANSFORM_ANIMATION_DURATION, curve.easeOutQuart, start, end, apply);
+        animate(app.CANVAS_TRANSFORM_ANIMATION_DURATION, curve.easeOutQuart, start, end, apply);
     }
 }
 
 export function getPixelOffset() {
-    const x = Math.floor(Math.abs(board.offset.x / app.PIXEL_SIZE));
-    const y = Math.floor(Math.abs(board.offset.y / app.PIXEL_SIZE));
+    const x = Math.floor(Math.abs(camera.offset.x / app.PIXEL_SIZE));
+    const y = Math.floor(Math.abs(camera.offset.y / app.PIXEL_SIZE));
 
     return { x: x, y: y };
 }
 
-function setBoardOffset(x, y) {
-    board.offset.x = Math.max(Math.min(x + board.offset.x, 0), -app.BOARD_SIZE + 0.1);
-    board.offset.y = Math.max(Math.min(y + board.offset.y, 0), -app.BOARD_SIZE + 0.1);
+function setCanvasOffset(x, y) {
+    camera.offset.x = Math.max(Math.min(x + camera.offset.x, 0), -app.CANVAS_SIZE + 0.1);
+    camera.offset.y = Math.max(Math.min(y + camera.offset.y, 0), -app.CANVAS_SIZE + 0.1);
 }
 
-function getMouseOffsetRelativeBoardOrigin(e) {
-    const x = (e instanceof TouchEvent ? e.touches[0].clientX : e.clientX) - boardEl.offsetLeft;
-    const y = (e instanceof TouchEvent ? e.touches[0].clientY : e.clientY) - boardEl.offsetTop;
+function getMouseOffsetRelativeCanvasOrigin(e) {
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - canvasWrapper.offsetLeft;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - canvasWrapper.offsetTop;
 
     return { x: x, y: y };
 }
 
 function animate(duration, curve, start, end, applyToElement) {
+    if (currentAnimationId) {
+        cancelAnimationFrame(currentAnimationId);
+        currentAnimationId = null;
+    }
+
     function run(currentTime, startTime) {
         const elapsedTime = currentTime - startTime;
 
@@ -149,20 +155,23 @@ function animate(duration, curve, start, end, applyToElement) {
             const progress = curve(elapsedTime / duration);
 
             let value;
-
             if (start instanceof Object) {
                 const x = (start.x + (end.x - start.x) * progress);
                 const y = (start.y + (end.y - start.y) * progress);
-
                 value = { x: x, y: y };
-            } else value = start + (end - start) * progress;
+            } else {
+                value = start + (end - start) * progress;
+            }
 
             applyToElement(value);
-            requestAnimationFrame((t) => run(t, startTime));
+            currentAnimationId = requestAnimationFrame((t) => run(t, startTime));
+        } else {
+            applyToElement(end);
+            currentAnimationId = null;
         }
     }
 
-    requestAnimationFrame((t) => run(t, t));
+    currentAnimationId = requestAnimationFrame((t) => run(t, t));
 }
 
 window.addEventListener('load', () => {
@@ -176,5 +185,5 @@ window.addEventListener('load', () => {
     scene.ontouchend = onMouseUp;
 
     document.getElementsByTagName('body')[0].onmouseup = onMouseUp;
-    document.getElementById('board-wrapper').onclick = goToPixel;
+    canvasWrapper.onclick = goToPixel;
 });
