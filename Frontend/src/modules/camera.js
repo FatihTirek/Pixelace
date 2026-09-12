@@ -129,7 +129,7 @@ export function zoomInToPixel() {
         const end = result;
         const apply = value => { camera.zoom = value; applyCanvasScale(camera); applyCanvasRenderingMode(camera); };
 
-        animate(app.CANVAS_TRANSFORM_ANIMATION_DURATION, curve.easeOutQuart, start, end, apply);
+        animate(app.CANVAS_TRANSFORM_ANIMATION_DURATION, curve.easeOutCubic, start, end, apply);
     }
 }
 

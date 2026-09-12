@@ -5,9 +5,22 @@ export const ZOOM_FACTOR = 1.732;
 export const ZOOM_RENDER_MODE_THRESHOLD = 1;
 export const MIN_ZOOM_FOR_SCALE_ANIMATION = 21;
 export const SCALE_ANIMATION_ZOOM_FACTOR = 1.275;
-export const CANVAS_TRANSFORM_ANIMATION_DURATION = 700;
+export const CANVAS_TRANSFORM_ANIMATION_DURATION = 350;
 export const DEFAULT_ROOM = 'EN';
-export const ROOM_DETAILS = [['EN', 'English'], ['TR', 'Turkish']];
+export const ROOM_DETAILS = [
+    ['EN', 'English'],
+    ['TR', 'Turkish'],
+    ['ES', 'Spanish'],
+    ['DE', 'German'],
+    ['FR', 'French'],
+    ['PT', 'Portuguese'],
+    ['IT', 'Italian'],
+    ['RU', 'Russian'],
+    ['JA', 'Japanese'],
+    ['KO', 'Korean'],
+    ['ZH', 'Chinese'],
+    ['AR', 'Arabic']
+];
 export const CHAT_COLOR_PALETTE = ['#ff1744', '#f50057', '#d500f9', '#651fff', '#3d5afe', '#2979ff', '#008573', '#008c3a', '#ff6d00', '#dd2c00'];
 
 export const CANVAS_COLOR_PALETTE = [

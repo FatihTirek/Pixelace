@@ -36,7 +36,21 @@ export function fillPalette() {
     colorContainer.innerHTML = '';
 
     const reversedPalette = Array.from(CANVAS_COLOR_PALETTE).reverse();
-    for (const color of reversedPalette) {
+    const ROWS = 3;
+    const cols = Math.ceil(reversedPalette.length / ROWS);
+
+    // Map items so that with CSS grid-auto-flow: column, they display horizontally left-to-right
+    const rowWisePalette = [];
+    for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < ROWS; r++) {
+            const index = r * cols + c;
+            if (index < reversedPalette.length) {
+                rowWisePalette.push(reversedPalette[index]);
+            }
+        }
+    }
+
+    for (const color of rowWisePalette) {
         const originalIndex = CANVAS_COLOR_PALETTE.indexOf(color);
         const hexValue = CANVAS_COLOR_PALETTE_HEX[originalIndex];
         const div = document.createElement('div');

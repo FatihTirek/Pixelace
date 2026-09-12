@@ -17,10 +17,7 @@ const chatLanguageDropdown = document.getElementById('chat-dropdown');
 
 const chatState = {
     activeRoom: localStorage.getItem('pixelace_lang') || DEFAULT_ROOM,
-    rooms: {
-        'EN': [],
-        'TR': []
-    }
+    rooms: Object.fromEntries(ROOM_DETAILS.map(([room]) => [room, []]))
 };
 
 const isConnected = () => connection.state === signalR.HubConnectionState.Connected;

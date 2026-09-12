@@ -28,15 +28,45 @@
 }
 
 @layer components {
+    #palette-colors {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(3, 38px);
+        grid-auto-columns: 38px;
+        gap: 0.5rem;
+        justify-content: start;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 1rem;
+        width: 100%;
+        box-sizing: border-box;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    #palette-colors::-webkit-scrollbar {
+        display: none;
+    }
+
     .palette-cbox {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         cursor: pointer;
         border: 2px solid black;
+        flex-shrink: 0;
     }
 
     .shadow-dropdown {
         box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px, rgba(0, 0, 0, 0.23) 0px 3px 6px;
+    }
+
+    #canvas-wrapper {
+        outline: 2px solid black;
+    }
+
+    #pixel-preview {
+        box-shadow: inset 0 0 0 2px #000000;
     }
 
     #canvas,

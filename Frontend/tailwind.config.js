@@ -22,8 +22,11 @@ module.exports = {
       animation: {
         heartbeat: 'heartbeat 400ms cubic-bezier(.35, 2, .5, .7) infinite alternate',
       },
+      transitionDuration: {
+        '350': '350ms',
+      },
       transitionTimingFunction: {
-        'out-quart': 'cubic-bezier(0.25, 1, 0.5, 1)',
+        'out-cubic': 'cubic-bezier(0.33, 1, 0.68, 1)',
       },
       fontFamily: {
         fira: ['"Fira Code"', 'monospace'],
