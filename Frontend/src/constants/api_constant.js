@@ -1,6 +1,6 @@
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-export const DOMAIN = isLocal ? 'https://localhost:7296/' : 'https://pixelace.azurewebsites.net/';
+export const DOMAIN = isLocal ? 'https://localhost:7296/' : 'https://pixelace-backend.onrender.com/';
 
 const CHAT_API = DOMAIN + 'api/chat';
 const CANVAS_API = DOMAIN + 'api/canvas';
