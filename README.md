@@ -17,7 +17,7 @@ Inspired by Reddit's viral **r/place**, **Pixelace** is a high-performance, real
 - **Snappy r/place Navigation**:
   - Smooth pan, pinch-to-zoom (mobile & trackpad), mouse-wheel zoom, and click-to-focus.
   - Quick, tactile **350ms `ease-out-cubic`** camera approach and palette slide-up transitions matching the feel of Reddit r/place.
-- **24-Color Curated Palette**: 24 vibrant colors inspired by r/place, featuring interactive pixel previews and a clean, responsive selection drawer.
+- **Full 32-Color r/place Palette**: The complete official 32-color spectrum from Reddit r/place, organized with a natural spectral gradient and interactive pixel previews.
 - **Multi-Language Live Chat**:
   - 12 international chat rooms (EN/US, TR, ES, DE, FR, PT, IT, RU, JA, KO, ZH, AR) with 24×24 shiny country flag badges.
   - History persisted in Redis (capped at 250 messages per room) with auto-scroll and nickname customization.
@@ -136,6 +136,29 @@ curl -X POST "http://localhost:5000/api/admin/cooldown?seconds=10" \
 
 ---
 
+### 3. Reset Canvas to Blank White
+Resets the entire 1000×1000 canvas in Redis (`canvas:state`) to default white pixels (color index 31).
+
+- **Endpoint**: `POST /api/admin/reset-canvas`
+- **Headers**:
+  - `X-Admin-Secret: <YOUR_ADMIN_SECRET>`
+
+#### cURL Example:
+```bash
+curl -X POST "http://localhost:5000/api/admin/reset-canvas" \
+     -H "X-Admin-Secret: pixelace-admin-secret-dev"
+```
+
+#### Successful Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Canvas successfully reset to blank white."
+}
+```
+
+---
+
 ### JavaScript / Fetch Example
 ```javascript
 // Change cooldown to 5 seconds
@@ -147,6 +170,19 @@ async function updateCooldown(newSeconds, adminSecret) {
       'X-Admin-Secret': adminSecret
     },
     body: JSON.stringify({ seconds: newSeconds })
+  });
+
+  const result = await response.json();
+  console.log(result);
+}
+
+// Reset canvas to white
+async function resetCanvas(adminSecret) {
+  const response = await fetch('/api/admin/reset-canvas', {
+    method: 'POST',
+    headers: {
+      'X-Admin-Secret': adminSecret
+    }
   });
 
   const result = await response.json();
@@ -166,6 +202,7 @@ async function updateCooldown(newSeconds, adminSecret) {
 | `GET` | `/api/chat/messages?room={ROOM}` | Public | Fetches the recent 250 messages for a given room (e.g. `EN`, `TR`). |
 | `GET` | `/api/admin/cooldown` | Admin | Retrieves current cooldown duration in seconds. |
 | `POST` | `/api/admin/cooldown` | Admin | Updates global cooldown duration (0 to 3600 seconds). |
+| `POST` | `/api/admin/reset-canvas` | Admin | Resets all 1,000,000 canvas pixels to default white (index 31). |
 
 ### SignalR Hubs
 
@@ -284,7 +321,7 @@ Pixelace/
 │   ├── src/
 │   │   ├── main.js                 # Frontend application entrypoint
 │   │   ├── main.css                # Base Tailwind & custom canvas/palette styles
-│   │   ├── constants/              # Canvas sizes, 24-color palette, 12 room definitions
+│   │   ├── constants/              # Canvas sizes, 32-color palette, 12 room definitions
 │   │   ├── modules/                # Camera, Canvas, Chat, Palette, Error handling
 │   │   └── utils/                  # Cubic easing curves, HTTP fetch wrappers
 │   └── dist/

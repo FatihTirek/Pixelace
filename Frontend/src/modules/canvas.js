@@ -33,7 +33,8 @@ export async function initializeCanvas() {
     const camera = { offset: { x: 0, y: 0 }, zoom: Math.min(innerWidth, innerHeight) / (CANVAS_SIZE * 2) };
 
     for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-        uint32[i] = CANVAS_COLOR_PALETTE[uint8[i] || 0];
+        const colorIdx = uint8[i] !== undefined ? uint8[i] : 31;
+        uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
     }
 
     ctx.imageSmoothingEnabled = false;
@@ -53,7 +54,8 @@ export async function initializeCanvas() {
             const req = await http.get(CANVAS_API_GET_CANVAS);
             const freshBytes = new Uint8Array(await req.arrayBuffer());
             for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-                uint32[i] = CANVAS_COLOR_PALETTE[freshBytes[i] || 0];
+                const colorIdx = freshBytes[i] !== undefined ? freshBytes[i] : 31;
+                uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
             }
             ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
         } catch (e) {
@@ -71,7 +73,8 @@ export async function initializeCanvas() {
                 const req = await http.get(CANVAS_API_GET_CANVAS);
                 const freshBytes = new Uint8Array(await req.arrayBuffer());
                 for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-                    uint32[i] = CANVAS_COLOR_PALETTE[freshBytes[i] || 0];
+                    const colorIdx = freshBytes[i] !== undefined ? freshBytes[i] : 31;
+                    uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
                 }
                 ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
             } catch (err) {

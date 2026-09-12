@@ -4,7 +4,8 @@ namespace Backend.src
     {
         public const int CanvasSize = 1000;
         public const int TotalPixels = CanvasSize * CanvasSize;
-        public const int PaletteCount = 24; // 0 to 23
+        public const int PaletteCount = 32; // 0 to 31
+        public const int DefaultColorIndex = 31; // 31 is White (#FFFFFF)
         public const int DefaultCooldownSeconds = 3;
         
         public const int MaxChatHistoryPerRoom = 250;

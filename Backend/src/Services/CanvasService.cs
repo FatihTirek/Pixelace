@@ -16,6 +16,7 @@ namespace Backend.src.Services
             }
 
             canvas = new byte[Constants.TotalPixels];
+            Array.Fill(canvas, (byte)Constants.DefaultColorIndex);
             await _redis.StringSetAsync(Constants.RedisKeys.Canvas, canvas);
             return canvas;
         }

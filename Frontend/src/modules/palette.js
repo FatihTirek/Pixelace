@@ -35,29 +35,13 @@ export function fillPalette() {
     const colorContainer = palette.children[0];
     colorContainer.innerHTML = '';
 
-    const reversedPalette = Array.from(CANVAS_COLOR_PALETTE).reverse();
-    const ROWS = 3;
-    const cols = Math.ceil(reversedPalette.length / ROWS);
-
-    // Map items so that with CSS grid-auto-flow: column, they display horizontally left-to-right
-    const rowWisePalette = [];
-    for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < ROWS; r++) {
-            const index = r * cols + c;
-            if (index < reversedPalette.length) {
-                rowWisePalette.push(reversedPalette[index]);
-            }
-        }
-    }
-
-    for (const color of rowWisePalette) {
-        const originalIndex = CANVAS_COLOR_PALETTE.indexOf(color);
-        const hexValue = CANVAS_COLOR_PALETTE_HEX[originalIndex];
+    for (let colorIndex = 0; colorIndex < CANVAS_COLOR_PALETTE.length; colorIndex++) {
+        const hexValue = CANVAS_COLOR_PALETTE_HEX[colorIndex];
         const div = document.createElement('div');
 
         div.classList.add('palette-cbox');
         div.style.backgroundColor = hexValue;
-        div.setAttribute('data-cindex', originalIndex);
+        div.setAttribute('data-cindex', colorIndex);
         div.onclick = () => {
             const box = document.querySelector('[data-selected]');
             box?.removeAttribute('data-selected');

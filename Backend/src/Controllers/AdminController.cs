@@ -42,6 +42,21 @@ namespace Backend.src.Controllers
             return Ok(new SetCooldownResponse(true, targetSeconds, $"Cooldown successfully updated to {targetSeconds} seconds."));
         }
 
+        [HttpPost("reset-canvas")]
+        public async Task<IActionResult> ResetCanvas()
+        {
+            if (!IsAuthorized())
+            {
+                return Unauthorized(new { error = "Unauthorized. Invalid or missing X-Admin-Secret." });
+            }
+
+            var canvas = new byte[Constants.TotalPixels];
+            Array.Fill(canvas, (byte)Constants.DefaultColorIndex);
+            await multiplexer.GetDatabase().StringSetAsync(Constants.RedisKeys.Canvas, canvas);
+
+            return Ok(new { success = true, message = "Canvas successfully reset to blank white." });
+        }
+
         private bool IsAuthorized()
         {
             var secret = configuration["ADMIN_SECRET"] ?? configuration["AdminSecret"] ?? "pixelace-admin-secret-dev";
