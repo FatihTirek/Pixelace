@@ -64,6 +64,7 @@ var redisOptions = ParseRedisOptions(rawRedisConnectionString);
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions));
 
 // 2. Domain & Application Services
+builder.Services.AddSingleton<GameConfigService>();
 builder.Services.AddScoped<CanvasService>();
 builder.Services.AddScoped<ChatService>();
 builder.Services.AddSingleton<IUserIdProvider, QueryUserIdProvider>();
@@ -97,6 +98,24 @@ builder.Services.AddSignalR(options =>
 });
 
 var app = builder.Build();
+
+// 6. Load persisted dynamic configurations (single Redis read on startup)
+var configService = app.Services.GetRequiredService<GameConfigService>();
+try
+{
+    var redisMultiplexer = app.Services.GetRequiredService<IConnectionMultiplexer>();
+    var redisDb = redisMultiplexer.GetDatabase();
+    var savedCooldown = await redisDb.StringGetAsync(Backend.src.Constants.RedisKeys.CooldownConfig);
+    if (savedCooldown.HasValue && int.TryParse((string?)savedCooldown, out int seconds) && seconds >= 0)
+    {
+        configService.CooldownSeconds = seconds;
+        app.Logger.LogInformation("Loaded dynamic cooldown config from Redis: {Seconds}s", seconds);
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Could not load initial cooldown from Redis. Using default {Seconds}s", configService.CooldownSeconds);
+}
 
 if (app.Environment.IsDevelopment())
 {

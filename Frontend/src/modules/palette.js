@@ -65,19 +65,23 @@ export function fillPalette() {
     }
 }
 
+let cooldownTargetTimestamp = 0;
+
 export function triggerCooldownCountdown(seconds) {
-    cooldownSecondsRemaining = seconds;
+    cooldownTargetTimestamp = Date.now() + (seconds * 1000);
     const applyButton = palette.getElementsByTagName('button').item(1);
 
     if (cooldownInterval) clearInterval(cooldownInterval);
 
     function update() {
+        const remainingMs = cooldownTargetTimestamp - Date.now();
+        cooldownSecondsRemaining = Math.max(0, Math.ceil(remainingMs / 1000));
+
         if (cooldownSecondsRemaining > 0) {
             applyButton.innerText = `Wait (${cooldownSecondsRemaining}s)`;
             placeButton.innerText = `Wait (${cooldownSecondsRemaining}s)`;
             applyButton.disabled = true;
             applyButton.style.cursor = 'not-allowed';
-            cooldownSecondsRemaining--;
         } else {
             clearInterval(cooldownInterval);
             cooldownInterval = null;
@@ -94,11 +98,33 @@ export function triggerCooldownCountdown(seconds) {
 }
 
 export function isCooldownActive() {
-    return cooldownSecondsRemaining > 0;
+    return cooldownTargetTimestamp > Date.now();
 }
 
 window.addEventListener('load', () => {
     placeButton.onclick = openPalette;
     palette.getElementsByTagName('button').item(0).onclick = closePalette;
     palette.getElementsByTagName('button').item(1).onclick = placePixel;
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && cooldownTargetTimestamp > 0) {
+            const remainingMs = cooldownTargetTimestamp - Date.now();
+            cooldownSecondsRemaining = Math.max(0, Math.ceil(remainingMs / 1000));
+            const applyButton = palette.getElementsByTagName('button').item(1);
+            if (cooldownSecondsRemaining <= 0) {
+                if (cooldownInterval) {
+                    clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                }
+                applyButton.innerText = 'Apply';
+                placeButton.innerText = 'Place a tile';
+                const hasSelected = !!document.querySelector('[data-selected]');
+                applyButton.disabled = !hasSelected;
+                applyButton.style.cursor = hasSelected ? 'pointer' : 'not-allowed';
+            } else {
+                applyButton.innerText = `Wait (${cooldownSecondsRemaining}s)`;
+                placeButton.innerText = `Wait (${cooldownSecondsRemaining}s)`;
+            }
+        }
+    });
 });

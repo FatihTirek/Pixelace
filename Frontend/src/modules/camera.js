@@ -4,7 +4,6 @@ import { applyCanvasScale, applyCanvasTranslate, applyCanvasRenderingMode } from
 
 let panning = false;
 let pinching = false;
-let mousemoved = false;
 let startPanOrPinch = {};
 let minZoom = Math.min(innerWidth, innerHeight) / (app.CANVAS_SIZE * 2);
 
@@ -39,18 +38,29 @@ function onMouseUp(e) {
     pinching = false;
 }
 
+let mouseDownPosition = { x: 0, y: 0 };
+let isDragAction = false;
+const DRAG_THRESHOLD_PX = 6;
+
 function onMouseDown(e) {
     panning = true;
-    mousemoved = false;
+    isDragAction = false;
     pinching = Boolean(e.touches && e.touches.length === 2);
     startPanOrPinch = pinching ? getPinchObject(e) : getPanObject(e);
+    mouseDownPosition = { x: startPanOrPinch.x, y: startPanOrPinch.y };
 }
 
 function onMouseMove(e) {
-    mousemoved = true;
-
     if (panning) {
         const newPanOrPinch = pinching ? getPinchObject(e) : getPanObject(e);
+
+        if (!isDragAction) {
+            const distance = Math.hypot(newPanOrPinch.x - mouseDownPosition.x, newPanOrPinch.y - mouseDownPosition.y);
+            if (distance > DRAG_THRESHOLD_PX) {
+                isDragAction = true;
+            }
+        }
+
         const x = (newPanOrPinch.x - startPanOrPinch.x) / camera.zoom;
         const y = (newPanOrPinch.y - startPanOrPinch.y) / camera.zoom;
 
@@ -92,7 +102,7 @@ function onWheel(e) {
 }
 
 function goToPixel(e) {
-    if (!mousemoved) {
+    if (!isDragAction) {
         const offset = getMouseOffsetRelativeCanvasOrigin(e);
         const x = -(offset.x - camera.offset.x * camera.zoom) / camera.zoom;
         const y = -(offset.y - camera.offset.y * camera.zoom) / camera.zoom;

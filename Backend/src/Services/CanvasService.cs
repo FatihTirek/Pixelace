@@ -3,7 +3,7 @@ using StackExchange.Redis;
 
 namespace Backend.src.Services
 {
-    public class CanvasService(IConnectionMultiplexer multiplexer)
+    public class CanvasService(IConnectionMultiplexer multiplexer, GameConfigService configService)
     {
         private readonly IDatabase _redis = multiplexer.GetDatabase();
 
@@ -27,8 +27,9 @@ namespace Backend.src.Services
                 return new PlacePixelResponse(false, 0, "User identifier is required.");
             }
 
+            int cooldownSeconds = configService.CooldownSeconds;
             string cooldownKey = GetCooldownKey(userId);
-            bool acquired = await _redis.StringSetAsync(cooldownKey, "1", TimeSpan.FromSeconds(Constants.DefaultCooldownSeconds), When.NotExists);
+            bool acquired = await _redis.StringSetAsync(cooldownKey, "1", TimeSpan.FromSeconds(cooldownSeconds), When.NotExists);
 
             if (!acquired)
             {
@@ -39,7 +40,7 @@ namespace Backend.src.Services
             }
 
             await _redis.StringSetRangeAsync(Constants.RedisKeys.Canvas, request.CanvasIndex, new byte[] { (byte)request.ColorIndex });
-            return new PlacePixelResponse(true, Constants.DefaultCooldownSeconds, Pixel: new PixelResponse(request.CanvasIndex, request.ColorIndex));
+            return new PlacePixelResponse(true, cooldownSeconds, Pixel: new PixelResponse(request.CanvasIndex, request.ColorIndex));
         }
 
         public async Task<int> GetRemainingCooldownAsync(string userId)

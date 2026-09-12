@@ -5,17 +5,18 @@ namespace Backend.src
         public const int CanvasSize = 1000;
         public const int TotalPixels = CanvasSize * CanvasSize;
         public const int PaletteCount = 24; // 0 to 23
-        public const int DefaultCooldownSeconds = 60;
+        public const int DefaultCooldownSeconds = 3;
         
         public const int MaxChatHistoryPerRoom = 250;
         public const int MaxMessageLength = 300;
-        public const int MaxUsernameLength = 30;
+        public const int MaxUsernameLength = 24;
 
         public static class RedisKeys
         {
             public const string Canvas = "canvas:state";
             public const string ChatRoomPrefix = "chat:room:";
             public const string CooldownPrefix = "cooldown:pixel:";
+            public const string CooldownConfig = "config:cooldown";
         }
 
         public static readonly string[] AllowedChatColors =

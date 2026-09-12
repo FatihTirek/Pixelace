@@ -46,7 +46,39 @@ export async function initializeCanvas() {
     await connection.start();
 
     connection.on('ReceivePixel', pixel => drawPixelOnCanvas(pixel.canvasIndex, pixel.colorIndex));
+    
+    // Only resync if connection was actually lost and re-established
+    connection.onreconnected(async () => {
+        try {
+            const req = await http.get(CANVAS_API_GET_CANVAS);
+            const freshBytes = new Uint8Array(await req.arrayBuffer());
+            for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
+                uint32[i] = CANVAS_COLOR_PALETTE[freshBytes[i] || 0];
+            }
+            ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+        } catch (e) {
+            console.warn('Silent canvas resync failed:', e);
+        }
+    });
+
     connection.onclose(showOfflinePage);
+
+    // If tab becomes visible and socket was closed, gracefully recover
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && connection.state === signalR.HubConnectionState.Disconnected) {
+            try {
+                await connection.start();
+                const req = await http.get(CANVAS_API_GET_CANVAS);
+                const freshBytes = new Uint8Array(await req.arrayBuffer());
+                for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
+                    uint32[i] = CANVAS_COLOR_PALETTE[freshBytes[i] || 0];
+                }
+                ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+            } catch (err) {
+                console.warn('Reconnection on tab focus failed:', err);
+            }
+        }
+    });
 
     const remaining = await connection.invoke('GetRemainingCooldown');
     if (remaining > 0) triggerCooldownCountdown(remaining);
@@ -75,9 +107,9 @@ export async function placePixel() {
     if (result && result.success) {
         drawPixelOnCanvas(canvasIndex, colorIndex);
         closePalette();
-        triggerCooldownCountdown(result.remainingCooldownSeconds || 60);
+        triggerCooldownCountdown(result.remainingCooldownSeconds || 3);
     } else {
-        const remaining = result?.remainingCooldownSeconds || 60;
+        const remaining = result?.remainingCooldownSeconds || 3;
         alert(result?.errorMessage || `Cooldown active! Please wait ${remaining} seconds.`);
         triggerCooldownCountdown(remaining);
     }

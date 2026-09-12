@@ -26,7 +26,7 @@ module.exports = {
         'out-quart': 'cubic-bezier(0.25, 1, 0.5, 1)',
       },
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
+        fira: ['"Fira Code"', 'monospace'],
       }
     },
   },

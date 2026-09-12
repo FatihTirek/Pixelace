@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="output.css">
     <title>Pixelace</title>
 </head>
@@ -14,15 +17,15 @@
     </div>
 
     <div id="content-offline"
-        class="hidden flex-col justify-center items-center text-center px-8 w-full h-full bg-white">
+        class="hidden flex-col justify-center items-center text-center px-8 w-full h-full bg-white font-fira">
         <img src="./assets/server-down.png" alt="Server Offline" width="156" height="156">
-        <span class="font-mono font-bold text-xl sm:text-2xl mt-2">Server Offline</span>
-        <span class="font-mono font-bold text-base sm:text-xl mt-3">The server is temporarily busy, try again later!</span>
+        <span class="font-bold text-xl sm:text-2xl mt-2">Server Offline</span>
+        <span class="font-bold text-base sm:text-xl mt-3">The server is temporarily busy, try again later!</span>
     </div>
 
     <div id="content-main" class="hidden w-full h-full bg-neutral-700">
         <div id="canvas-info"
-            class="fixed top-6 left-1/2 w-[156px] py-1 text-center z-[1] -translate-x-1/2 border-2 border-black bg-white font-mono font-bold text-sm sm:text-base">
+            class="fixed top-6 left-1/2 w-[156px] py-1 text-center z-[1] -translate-x-1/2 border-2 border-black bg-white font-fira font-bold text-sm sm:text-base">
             <span></span>
             <span></span>
         </div>
@@ -36,7 +39,7 @@
         </main>
 
         <button id="place-tile-btn"
-            class="fixed bottom-6 left-1/2 px-6 py-1 text-center cursor-pointer z-[1] -translate-x-1/2 border-2 border-black bg-white font-mono font-bold text-sm sm:text-base"
+            class="fixed bottom-6 left-1/2 px-6 py-1 text-center cursor-pointer z-[1] -translate-x-1/2 border-2 border-black bg-white font-fira font-bold text-sm sm:text-base"
             type="button">Place a tile</button>
 
         <button id="chat-open" type="button"
@@ -45,10 +48,10 @@
         </button>
 
         <div id="chat"
-            class="flex flex-col justify-between w-[360px] h-full fixed bottom-0 right-0 translate-x-full transition-transform duration-300 ease-out-quart gap-4 z-[3] p-4 border-l-2 border-black bg-white">
+            class="flex flex-col justify-between w-full sm:w-[380px] md:w-[400px] max-w-full h-full fixed bottom-0 right-0 translate-x-full transition-transform duration-300 ease-out-quart gap-4 z-[3] p-4 border-l-2 border-black bg-white font-fira">
             <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 font-inter">
-                    <h1 class="font-semibold text-2xl">Live Chat</h1>
+                <div class="flex items-center gap-3">
+                    <h1 class="font-bold text-lg tracking-tight">Live Chat:</h1>
                     <div class="relative inline-block">
                         <div id="chat-lang" data-room="EN"
                             class="flex items-center gap-1 px-1 rounded-[2px] cursor-pointer border-2 border-neutral-200 bg-neutral-50">
@@ -61,16 +64,16 @@
                 <ion-icon name="close-outline" id="chat-close" class="cursor-pointer"></ion-icon>
             </div>
             <div id="chat-body"
-                class="flex flex-col overflow-y-auto overflow-x-hidden w-full h-full gap-2 p-2 border-2 border-neutral-200 bg-neutral-50 font-mono font-bold text-sm sm:text-base sm:leading-5">
+                class="flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full gap-2 p-2.5 border-2 border-neutral-200 bg-neutral-50 font-fira font-bold text-xs sm:text-sm leading-snug">
             </div>
-            <input type="text" name="message" id="chat-input" placeholder="Enter a message" maxlength="300" autocomplete="off"
-                class="font-inter font-medium text-base p-3 focus:outline-none border-2 border-black">
+            <textarea name="message" id="chat-input" placeholder="Enter a message" maxlength="300" autocomplete="off" rows="1"
+                class="box-border font-fira font-bold text-xs sm:text-sm p-3 focus:outline-none border-2 border-black resize-none overflow-hidden block w-full leading-normal shrink-0"></textarea>
         </div>
 
         <div id="palette"
-            class="flex flex-col fixed bottom-0 left-1/2 translate-y-full transition-transform duration-700 ease-out-quart xs:w-[412px] xs:border-r-2 xs:border-l-2 w-full p-4 z-[2] gap-4 -translate-x-1/2 border-t-2 border-black bg-white">
+            class="flex flex-col fixed bottom-0 left-1/2 translate-y-full transition-transform duration-700 ease-out-quart xs:w-[412px] xs:border-r-2 xs:border-l-2 w-full p-4 z-[2] gap-4 -translate-x-1/2 border-t-2 border-black bg-white font-fira">
             <div class="flex flex-wrap justify-center gap-2"></div>
-            <div class="flex gap-2 font-mono font-bold text-sm sm:text-base">
+            <div class="flex gap-2 font-bold text-sm sm:text-base">
                 <button type="button"
                     class="w-full py-2 text-center cursor-pointer border-2 border-black bg-white">Cancel</button>
                 <button type="button" disabled

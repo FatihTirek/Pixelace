@@ -5,7 +5,7 @@ namespace Backend.src.DTOs
 {
     public record SendMessageRequest(string? Username = null, string? Room = null, string? Color = null, string Text = "")
     {
-        [MaxLength(Constants.MaxUsernameLength, ErrorMessage = "Username cannot exceed 30 characters.")]
+        [MaxLength(Constants.MaxUsernameLength, ErrorMessage = "Username cannot exceed 24 characters.")]
         public string Username { get; init; } = string.IsNullOrWhiteSpace(Username) ? "Anonymous" : Username.Trim();
 
         [MaxLength(50, ErrorMessage = "Room name cannot exceed 50 characters.")]
