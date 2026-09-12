@@ -1,8 +1,6 @@
 export const PIXEL_SIZE = 1;
 export const CANVAS_SIZE = 1000;
 export const ZOOM_MAX = 50;
-export const ZOOM_FACTOR = 1.732;
-export const ZOOM_RENDER_MODE_THRESHOLD = 1;
 export const MIN_ZOOM_FOR_SCALE_ANIMATION = 21;
 export const SCALE_ANIMATION_ZOOM_FACTOR = 1.275;
 export const CANVAS_TRANSFORM_ANIMATION_DURATION = 350;

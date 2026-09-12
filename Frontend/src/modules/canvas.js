@@ -4,11 +4,9 @@ import { getPixelOffset } from "./camera.js";
 import { showOfflinePage } from "./error.js";
 import { CANVAS_HUB, CANVAS_API_GET_CANVAS } from "../constants/api_constant.js";
 import { 
-    PIXEL_SIZE, 
     CANVAS_SIZE, 
     CANVAS_COLOR_PALETTE, 
     CANVAS_COLOR_PALETTE_HEX, 
-    ZOOM_RENDER_MODE_THRESHOLD, 
     getOrCreateGuestId 
 } from "../constants/app_constant.js";
 
@@ -27,18 +25,20 @@ const connection = new signalR.HubConnectionBuilder()
 
 const uint32 = new Uint32Array(CANVAS_SIZE ** 2);
 
+function renderCanvasBytes(uint8) {
+    for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
+        uint32[i] = CANVAS_COLOR_PALETTE[uint8[i]];
+    }
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+}
+
 export async function initializeCanvas() {
     const request = await http.get(CANVAS_API_GET_CANVAS);
     const uint8 = new Uint8Array(await request.arrayBuffer());
     const camera = { offset: { x: 0, y: 0 }, zoom: Math.min(innerWidth, innerHeight) / (CANVAS_SIZE * 2) };
 
-    for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-        const colorIdx = uint8[i] !== undefined ? uint8[i] : 31;
-        uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
-    }
-
     ctx.imageSmoothingEnabled = false;
-    ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+    renderCanvasBytes(uint8);
 
     applyCanvasScale(camera);
     applyCanvasTranslate(camera);
@@ -52,12 +52,7 @@ export async function initializeCanvas() {
     connection.onreconnected(async () => {
         try {
             const req = await http.get(CANVAS_API_GET_CANVAS);
-            const freshBytes = new Uint8Array(await req.arrayBuffer());
-            for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-                const colorIdx = freshBytes[i] !== undefined ? freshBytes[i] : 31;
-                uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
-            }
-            ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+            renderCanvasBytes(new Uint8Array(await req.arrayBuffer()));
         } catch (e) {
             console.warn('Silent canvas resync failed:', e);
         }
@@ -71,12 +66,7 @@ export async function initializeCanvas() {
             try {
                 await connection.start();
                 const req = await http.get(CANVAS_API_GET_CANVAS);
-                const freshBytes = new Uint8Array(await req.arrayBuffer());
-                for (let i = 0; i < CANVAS_SIZE ** 2; i++) {
-                    const colorIdx = freshBytes[i] !== undefined ? freshBytes[i] : 31;
-                    uint32[i] = CANVAS_COLOR_PALETTE[colorIdx] ?? CANVAS_COLOR_PALETTE[31];
-                }
-                ctx.putImageData(new ImageData(new Uint8ClampedArray(uint32.buffer), CANVAS_SIZE, CANVAS_SIZE), 0, 0);
+                renderCanvasBytes(new Uint8Array(await req.arrayBuffer()));
             } catch (err) {
                 console.warn('Reconnection on tab focus failed:', err);
             }
