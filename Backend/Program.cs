@@ -7,17 +7,53 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Resilient Redis Connection (Does not crash startup if Redis is temporarily cold)
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+// 1. Resilient Redis Connection (Supports both rediss:// URLs and host:port strings)
+var rawRedisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+static ConfigurationOptions ParseRedisOptions(string rawConnection)
 {
-    var config = ConfigurationOptions.Parse(redisConnectionString);
-    config.AbortOnConnectFail = false; // Resilient cold-start
-    config.ConnectTimeout = 5000;
-    config.SyncTimeout = 5000;
-    return ConnectionMultiplexer.Connect(config);
-});
+    ConfigurationOptions options;
+    if (rawConnection.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) ||
+        rawConnection.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(rawConnection);
+        options = new ConfigurationOptions
+        {
+            EndPoints = { { uri.Host, uri.Port > 0 ? uri.Port : 6379 } },
+            Ssl = rawConnection.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase),
+            AbortOnConnectFail = false,
+            ConnectTimeout = 10000,
+            SyncTimeout = 10000
+        };
+
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+        {
+            var parts = uri.UserInfo.Split(':', 2);
+            if (parts.Length == 2)
+            {
+                options.User = parts[0];
+                options.Password = parts[1];
+            }
+            else
+            {
+                options.Password = parts[0];
+            }
+        }
+    }
+    else
+    {
+        options = ConfigurationOptions.Parse(rawConnection);
+        options.AbortOnConnectFail = false;
+        options.ConnectTimeout = 10000;
+        options.SyncTimeout = 10000;
+    }
+
+    return options;
+}
+
+var redisOptions = ParseRedisOptions(rawRedisConnectionString);
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions));
 
 // 2. Domain & Application Services
 builder.Services.AddScoped<CanvasService>();
@@ -46,8 +82,9 @@ builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
     options.AddFilter<ValidationHubFilter>();
-}).AddStackExchangeRedis(redisConnectionString, options =>
+}).AddStackExchangeRedis(options =>
 {
+    options.Configuration = redisOptions;
     options.Configuration.ChannelPrefix = RedisChannel.Literal("Pixelace");
 });
 
@@ -56,10 +93,10 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection();
 }
 
 app.UseCors();
-app.UseHttpsRedirection();
 
 app.MapControllers();
 app.MapHub<ChatHub>("hub/chat");
