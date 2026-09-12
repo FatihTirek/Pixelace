@@ -17,35 +17,48 @@ static ConfigurationOptions ParseRedisOptions(string rawConnection)
         rawConnection.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
     {
         var uri = new Uri(rawConnection);
+        bool isSsl = rawConnection.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase);
         options = new ConfigurationOptions
         {
             EndPoints = { { uri.Host, uri.Port > 0 ? uri.Port : 6379 } },
-            Ssl = rawConnection.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase),
+            Ssl = isSsl,
+            SslHost = isSsl ? uri.Host : null,
+            SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
             AbortOnConnectFail = false,
-            ConnectTimeout = 10000,
-            SyncTimeout = 10000
+            ConnectTimeout = 15000,
+            SyncTimeout = 15000,
+            KeepAlive = 30
         };
 
         if (!string.IsNullOrEmpty(uri.UserInfo))
         {
             var parts = uri.UserInfo.Split(':', 2);
-            if (parts.Length == 2)
+            string password = parts.Length == 2 ? parts[1] : parts[0];
+            string user = parts.Length == 2 ? parts[0] : string.Empty;
+
+            if (!string.IsNullOrEmpty(user) && !user.Equals("default", StringComparison.OrdinalIgnoreCase))
             {
-                options.User = parts[0];
-                options.Password = parts[1];
+                options.User = user;
             }
-            else
-            {
-                options.Password = parts[0];
-            }
+            options.Password = password;
         }
     }
     else
     {
         options = ConfigurationOptions.Parse(rawConnection);
         options.AbortOnConnectFail = false;
-        options.ConnectTimeout = 10000;
-        options.SyncTimeout = 10000;
+        options.ConnectTimeout = 15000;
+        options.SyncTimeout = 15000;
+        options.KeepAlive = 30;
+        if (options.Ssl)
+        {
+            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13;
+            var host = options.EndPoints.FirstOrDefault() as System.Net.DnsEndPoint;
+            if (host != null && string.IsNullOrEmpty(options.SslHost))
+            {
+                options.SslHost = host.Host;
+            }
+        }
     }
 
     return options;
