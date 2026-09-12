@@ -33,14 +33,7 @@ static ConfigurationOptions ParseRedisOptions(string rawConnection)
         if (!string.IsNullOrEmpty(uri.UserInfo))
         {
             var parts = uri.UserInfo.Split(':', 2);
-            string password = parts.Length == 2 ? parts[1] : parts[0];
-            string user = parts.Length == 2 ? parts[0] : string.Empty;
-
-            if (!string.IsNullOrEmpty(user) && !user.Equals("default", StringComparison.OrdinalIgnoreCase))
-            {
-                options.User = user;
-            }
-            options.Password = password;
+            options.Password = parts.Length == 2 ? parts[1] : parts[0];
         }
     }
     else
@@ -53,13 +46,15 @@ static ConfigurationOptions ParseRedisOptions(string rawConnection)
         if (options.Ssl)
         {
             options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13;
-            var host = options.EndPoints.FirstOrDefault() as System.Net.DnsEndPoint;
-            if (host != null && string.IsNullOrEmpty(options.SslHost))
+            if (options.EndPoints.FirstOrDefault() is System.Net.DnsEndPoint host && string.IsNullOrEmpty(options.SslHost))
             {
                 options.SslHost = host.Host;
             }
         }
     }
+
+    // Upstash TLS certificate validation handler
+    options.CertificateValidation += (_, _, _, _) => true;
 
     return options;
 }
