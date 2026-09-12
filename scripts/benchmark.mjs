@@ -1,16 +1,8 @@
 #!/usr/bin/env node
 
-/**
- * Pixelace Comprehensive Performance Benchmark & Metric Analyzer
- * 
- * Usage:
- *   node scripts/benchmark.mjs [url]
- * Example:
- *   node scripts/benchmark.mjs http://127.0.0.1:5299
- *   node scripts/benchmark.mjs https://pixelace-backend.onrender.com
- */
-
 import { performance } from 'perf_hooks';
+import http from 'http';
+import https from 'https';
 
 const targetUrl = process.argv[2] || 'http://127.0.0.1:5299';
 const baseUrl = targetUrl.replace(/\/+$/, '');
@@ -21,83 +13,60 @@ console.log(`🎯 Target URL: ${baseUrl}`);
 console.log(`⏰ Timestamp : ${new Date().toISOString()}`);
 console.log('='.repeat(70) + '\n');
 
+function fetchRawWire(url, encoding) {
+    return new Promise((resolve, reject) => {
+        const parsed = new URL(url);
+        const client = parsed.protocol === 'https:' ? https : http;
+        const start = performance.now();
+        const req = client.get(url, { headers: { 'Accept-Encoding': encoding } }, (res) => {
+            let bytes = 0;
+            res.on('data', chunk => { bytes += chunk.length; });
+            res.on('end', () => {
+                const elapsed = performance.now() - start;
+                resolve({
+                    status: res.statusCode,
+                    encoding: res.headers['content-encoding'] || 'identity',
+                    bytes,
+                    timeMs: elapsed
+                });
+            });
+        });
+        req.on('error', reject);
+    });
+}
+
 async function benchmarkHttpSnapshot() {
     console.log(`[1/3] 📊 Benchmarking Canvas HTTP Snapshot (/api/canvas)...`);
     
-    // 1. Uncompressed (identity / Legacy behavior)
-    let uncompressedSize = 0;
-    let uncompressedTime = 0;
-    try {
-        const start = performance.now();
-        const res = await fetch(`${baseUrl}/api/canvas`, {
-            headers: { 'Accept-Encoding': 'identity' }
-        });
-        const buffer = await res.arrayBuffer();
-        uncompressedTime = performance.now() - start;
-        uncompressedSize = buffer.byteLength;
-    } catch (e) {
-        console.warn('  ⚠️ Uncompressed fetch failed:', e.message);
-    }
-
-    // 2. Gzip
-    let gzipSize = 0;
-    let gzipTime = 0;
-    let gzipEnc = '';
-    try {
-        const start = performance.now();
-        const res = await fetch(`${baseUrl}/api/canvas`, {
-            headers: { 'Accept-Encoding': 'gzip' }
-        });
-        gzipEnc = res.headers.get('content-encoding') || 'none';
-        const buffer = await res.arrayBuffer();
-        gzipTime = performance.now() - start;
-        gzipSize = buffer.byteLength;
-    } catch (e) {
-        console.warn('  ⚠️ Gzip fetch failed:', e.message);
-    }
-
-    // 3. Brotli
-    let brotliSize = 0;
-    let brotliTime = 0;
-    let brotliEnc = '';
-    try {
-        const start = performance.now();
-        const res = await fetch(`${baseUrl}/api/canvas`, {
-            headers: { 'Accept-Encoding': 'br' }
-        });
-        brotliEnc = res.headers.get('content-encoding') || 'none';
-        const buffer = await res.arrayBuffer();
-        brotliTime = performance.now() - start;
-        brotliSize = buffer.byteLength;
-    } catch (e) {
-        console.warn('  ⚠️ Brotli fetch failed:', e.message);
-    }
+    const uncompressed = await fetchRawWire(`${baseUrl}/api/canvas`, 'identity');
+    const gzip = await fetchRawWire(`${baseUrl}/api/canvas`, 'gzip');
+    const brotli = await fetchRawWire(`${baseUrl}/api/canvas`, 'br');
 
     const fmtBytes = b => (b >= 1024 * 1024 ? (b / (1024 * 1024)).toFixed(2) + ' MB' : (b / 1024).toFixed(2) + ' KB');
-    const gzipRatio = uncompressedSize > 0 ? (((uncompressedSize - gzipSize) / uncompressedSize) * 100).toFixed(2) : 0;
-    const brotliRatio = uncompressedSize > 0 ? (((uncompressedSize - brotliSize) / uncompressedSize) * 100).toFixed(2) : 0;
+    const gzipRatio = (((uncompressed.bytes - gzip.bytes) / uncompressed.bytes) * 100).toFixed(2);
+    const brotliRatio = (((uncompressed.bytes - brotli.bytes) / uncompressed.bytes) * 100).toFixed(2);
 
-    console.log('\n--- HTTP Canvas Transfer Results ---');
+    console.log('\n--- HTTP Canvas Wire-Transfer Results ---');
     console.table([
         { 
             Method: 'Uncompressed (Legacy)', 
-            Size: `${uncompressedSize.toLocaleString()} B (${fmtBytes(uncompressedSize)})`, 
-            Time: `${uncompressedTime.toFixed(1)} ms`, 
-            'Content-Encoding': 'identity',
+            'Wire Size': `${uncompressed.bytes.toLocaleString()} B (${fmtBytes(uncompressed.bytes)})`, 
+            Time: `${uncompressed.timeMs.toFixed(1)} ms`, 
+            'Content-Encoding': uncompressed.encoding,
             Savings: '0% (Baseline)' 
         },
         { 
             Method: 'Gzip (Modern)', 
-            Size: `${gzipSize.toLocaleString()} B (${fmtBytes(gzipSize)})`, 
-            Time: `${gzipTime.toFixed(1)} ms`, 
-            'Content-Encoding': gzipEnc,
+            'Wire Size': `${gzip.bytes.toLocaleString()} B (${fmtBytes(gzip.bytes)})`, 
+            Time: `${gzip.timeMs.toFixed(1)} ms`, 
+            'Content-Encoding': gzip.encoding,
             Savings: `${gzipRatio}%` 
         },
         { 
             Method: 'Brotli (Modern Ultra)', 
-            Size: `${brotliSize.toLocaleString()} B (${fmtBytes(brotliSize)})`, 
-            Time: `${brotliTime.toFixed(1)} ms`, 
-            'Content-Encoding': brotliEnc,
+            'Wire Size': `${brotli.bytes.toLocaleString()} B (${fmtBytes(brotli.bytes)})`, 
+            Time: `${brotli.timeMs.toFixed(1)} ms`, 
+            'Content-Encoding': brotli.encoding,
             Savings: `${brotliRatio}%` 
         }
     ]);
@@ -109,13 +78,11 @@ function benchmarkWebSocketFraming() {
     const samplePayload = { canvasIndex: 524103, colorIndex: 27 };
     const sampleBroadcast = { canvasIndex: 524103, colorIndex: 27 };
 
-    // JSON framing overhead
     const jsonSend = JSON.stringify({ type: 1, target: 'SendPixel', arguments: [samplePayload] }) + '\u001e';
     const jsonReceive = JSON.stringify({ type: 1, target: 'ReceivePixel', arguments: [sampleBroadcast] }) + '\u001e';
     const jsonSendBytes = Buffer.byteLength(jsonSend, 'utf8');
     const jsonReceiveBytes = Buffer.byteLength(jsonReceive, 'utf8');
 
-    // MessagePack framing overhead (SignalR binary spec)
     const msgpackSendBytes = 28;
     const msgpackReceiveBytes = 22;
 
