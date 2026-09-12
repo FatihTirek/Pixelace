@@ -2,6 +2,7 @@ using Backend.src.Hubs;
 using Backend.src.Hubs.Filters;
 using Backend.src.Hubs.Providers;
 using Backend.src.Services;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 
@@ -69,12 +70,31 @@ builder.Services.AddScoped<CanvasService>();
 builder.Services.AddScoped<ChatService>();
 builder.Services.AddSingleton<IUserIdProvider, QueryUserIdProvider>();
 
-// 3. Routing & Controllers
+// 3. Response Compression (Brotli + Gzip for 1MB raw canvas binary and APIs)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/octet-stream"]);
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+
+// 4. Routing & Controllers
 builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// 4. CORS (Allows SignalR credentials & WebSockets from frontend)
+// 5. CORS (Allows SignalR credentials & WebSockets from frontend)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -86,12 +106,14 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 5. SignalR with Redis Backplane support for horizontal scaling
+// 6. SignalR with MessagePack binary protocol and Redis Backplane support
 builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
     options.AddFilter<ValidationHubFilter>();
-}).AddStackExchangeRedis(options =>
+})
+.AddMessagePackProtocol()
+.AddStackExchangeRedis(options =>
 {
     options.Configuration = redisOptions;
     options.Configuration.ChannelPrefix = RedisChannel.Literal("Pixelace");
@@ -99,7 +121,7 @@ builder.Services.AddSignalR(options =>
 
 var app = builder.Build();
 
-// 6. Load persisted dynamic configurations (single Redis read on startup)
+// 7. Load persisted dynamic configurations (single Redis read on startup)
 var configService = app.Services.GetRequiredService<GameConfigService>();
 try
 {
@@ -123,6 +145,7 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseResponseCompression();
 app.UseCors();
 
 app.MapControllers();

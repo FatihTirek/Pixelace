@@ -18,10 +18,15 @@ const canvasEl = document.getElementById('canvas');
 const ctx = canvasEl.getContext('2d');
 
 const guestId = getOrCreateGuestId();
-const connection = new signalR.HubConnectionBuilder()
+const connectionBuilder = new signalR.HubConnectionBuilder()
     .withUrl(`${CANVAS_HUB}?userId=${encodeURIComponent(guestId)}`)
-    .withAutomaticReconnect([0, 2000, 5000, 10000])
-    .build();
+    .withAutomaticReconnect([0, 2000, 5000, 10000]);
+
+if (typeof signalR?.protocols?.msgpack?.MessagePackHubProtocol !== 'undefined') {
+    connectionBuilder.withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol());
+}
+
+const connection = connectionBuilder.build();
 
 const uint32 = new Uint32Array(CANVAS_SIZE ** 2);
 
@@ -46,7 +51,11 @@ export async function initializeCanvas() {
 
     await connection.start();
 
-    connection.on('ReceivePixel', pixel => drawPixelOnCanvas(pixel.canvasIndex, pixel.colorIndex));
+    connection.on('ReceivePixel', pixel => {
+        const cIndex = pixel.canvasIndex ?? pixel.CanvasIndex;
+        const colIndex = pixel.colorIndex ?? pixel.ColorIndex;
+        drawPixelOnCanvas(cIndex, colIndex);
+    });
     
     // Only resync if connection was actually lost and re-established
     connection.onreconnected(async () => {
@@ -97,14 +106,17 @@ export async function placePixel() {
     const payload = { canvasIndex, colorIndex };
 
     const result = await connection.invoke('SendPixel', payload);
-    if (result && result.success) {
+    const isSuccess = result?.success ?? result?.Success;
+    const cooldownSec = result?.remainingCooldownSeconds ?? result?.RemainingCooldownSeconds ?? 3;
+    const errorMsg = result?.errorMessage ?? result?.ErrorMessage;
+
+    if (result && isSuccess) {
         drawPixelOnCanvas(canvasIndex, colorIndex);
         closePalette();
-        triggerCooldownCountdown(result.remainingCooldownSeconds || 3);
+        triggerCooldownCountdown(cooldownSec);
     } else {
-        const remaining = result?.remainingCooldownSeconds || 3;
-        alert(result?.errorMessage || `Cooldown active! Please wait ${remaining} seconds.`);
-        triggerCooldownCountdown(remaining);
+        alert(errorMsg || `Cooldown active! Please wait ${cooldownSec} seconds.`);
+        triggerCooldownCountdown(cooldownSec);
     }
 }
 

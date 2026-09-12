@@ -18,6 +18,8 @@ Inspired by Reddit's viral **r/place**, **Pixelace** is a high-performance, real
   - Smooth pan, pinch-to-zoom (mobile & trackpad), mouse-wheel zoom, and click-to-focus.
   - Quick, tactile **350ms `ease-out-cubic`** camera approach and palette slide-up transitions matching the feel of Reddit r/place.
 - **Full 32-Color r/place Palette**: The complete official 32-color spectrum from Reddit r/place, organized with a natural spectral gradient and interactive pixel previews.
+- **MessagePack Binary WebSocket Streaming**: High-frequency canvas operations stream over compact binary MessagePack rather than verbose JSON, drastically reducing WebSocket packet overhead.
+- **Brotli & Gzip Response Compression**: The 1 MB initial canvas binary state is compressed dynamically via Brotli/Gzip down to a tiny fraction of its original size for near-instant initial page loads.
 - **Multi-Language Live Chat**:
   - 12 international chat rooms (EN/US, TR, ES, DE, FR, PT, IT, RU, JA, KO, ZH, AR) with 24×24 shiny country flag badges.
   - History persisted in Redis (capped at 250 messages per room) with auto-scroll and nickname customization.
