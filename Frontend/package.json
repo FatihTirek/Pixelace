@@ -5,9 +5,13 @@
   "private": true,
   "scripts": {
     "bundle-css": "tailwindcss -i ./src/main.css -o ./dist/output.css --minify",
-    "bundle-js": "webpack"
+    "bundle-js": "webpack",
+    "watch-css": "tailwindcss -i ./src/main.css -o ./dist/output.css --watch",
+    "watch-js": "webpack --watch",
+    "dev": "concurrently --names \"CSS,JS\" --prefix-colors \"blue,green\" \"npm run watch-css\" \"npm run watch-js\""
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "tailwindcss": "^3.4.1",
     "webpack-cli": "^5.1.4"
   },
