@@ -3,8 +3,9 @@
 import { performance } from 'perf_hooks';
 import http from 'http';
 import https from 'https';
+import zlib from 'zlib';
 
-const targetUrl = process.argv[2] || 'http://127.0.0.1:5299';
+const targetUrl = process.argv[2] || 'https://localhost:7296';
 const baseUrl = targetUrl.replace(/\/+$/, '');
 
 console.log('\n' + '='.repeat(70));
@@ -13,20 +14,31 @@ console.log(`🎯 Target URL: ${baseUrl}`);
 console.log(`⏰ Timestamp : ${new Date().toISOString()}`);
 console.log('='.repeat(70) + '\n');
 
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
 function fetchRawWire(url, encoding) {
     return new Promise((resolve, reject) => {
         const parsed = new URL(url);
         const client = parsed.protocol === 'https:' ? https : http;
         const start = performance.now();
-        const req = client.get(url, { headers: { 'Accept-Encoding': encoding } }, (res) => {
+        const options = {
+            headers: { 'Accept-Encoding': encoding },
+            agent: parsed.protocol === 'https:' ? httpsAgent : undefined
+        };
+        const req = client.get(url, options, (res) => {
+            const chunks = [];
             let bytes = 0;
-            res.on('data', chunk => { bytes += chunk.length; });
+            res.on('data', chunk => { 
+                chunks.push(chunk);
+                bytes += chunk.length; 
+            });
             res.on('end', () => {
                 const elapsed = performance.now() - start;
                 resolve({
                     status: res.statusCode,
                     encoding: res.headers['content-encoding'] || 'identity',
                     bytes,
+                    buffer: Buffer.concat(chunks),
                     timeMs: elapsed
                 });
             });
@@ -36,40 +48,69 @@ function fetchRawWire(url, encoding) {
 }
 
 async function benchmarkHttpSnapshot() {
-    console.log(`[1/3] 📊 Benchmarking Canvas HTTP Snapshot (/api/canvas)...`);
+    console.log(`[1/3] 📊 Benchmarking Canvas HTTP Snapshot & Data Formats (/api/canvas)...`);
     
+    // 1. Live server fetch
     const uncompressed = await fetchRawWire(`${baseUrl}/api/canvas`, 'identity');
     const gzip = await fetchRawWire(`${baseUrl}/api/canvas`, 'gzip');
     const brotli = await fetchRawWire(`${baseUrl}/api/canvas`, 'br');
 
-    const fmtBytes = b => (b >= 1024 * 1024 ? (b / (1024 * 1024)).toFixed(2) + ' MB' : (b / 1024).toFixed(2) + ' KB');
-    const gzipRatio = (((uncompressed.bytes - gzip.bytes) / uncompressed.bytes) * 100).toFixed(2);
-    const brotliRatio = (((uncompressed.bytes - brotli.bytes) / uncompressed.bytes) * 100).toFixed(2);
+    // 2. Real Canvas Data for 4-byte Integer format vs 1-byte Byte format
+    const realCanvasBytes = uncompressed.buffer;
+    const totalPixels = realCanvasBytes.length || 1000000;
+    const int32Buffer = Buffer.alloc(totalPixels * 4);
+    for (let i = 0; i < totalPixels; i++) {
+        int32Buffer.writeInt32LE(realCanvasBytes[i] ?? 31, i * 4);
+    }
 
-    console.log('\n--- HTTP Canvas Wire-Transfer Results ---');
+    const int32Gzip = zlib.gzipSync(int32Buffer);
+    const int32Brotli = zlib.brotliCompressSync(int32Buffer);
+
+    // Approximate JSON DTO: [{"i":0,"c":31},...] ~ 18-22 MB
+    const sampleDtoJson = JSON.stringify({ i: 500000, c: 31 }); // ~18 bytes per pixel
+    const jsonEstimatedBytes = totalPixels * sampleDtoJson.length;
+
+    const fmtBytes = b => (b >= 1024 * 1024 ? (b / (1024 * 1024)).toFixed(2) + ' MB' : (b / 1024).toFixed(2) + ' KB');
+
+    console.log('\n--- 🧪 Format & Compression Comparison (1,000,000 Pixels) ---');
     console.table([
         { 
-            Method: 'Uncompressed (Legacy)', 
-            'Wire Size': `${uncompressed.bytes.toLocaleString()} B (${fmtBytes(uncompressed.bytes)})`, 
-            Time: `${uncompressed.timeMs.toFixed(1)} ms`, 
-            'Content-Encoding': uncompressed.encoding,
-            Savings: '0% (Baseline)' 
+            'Architecture / Format': '1. Traditional JSON DTO (List<PixelDto>)', 
+            'Raw Size': `${jsonEstimatedBytes.toLocaleString()} B (~${fmtBytes(jsonEstimatedBytes)})`, 
+            'Compressed (Brotli)': '~1.5 MB',
+            'Savings vs JSON Baseline': '0% (Worst Case)'
         },
         { 
-            Method: 'Gzip (Modern)', 
-            'Wire Size': `${gzip.bytes.toLocaleString()} B (${fmtBytes(gzip.bytes)})`, 
-            Time: `${gzip.timeMs.toFixed(1)} ms`, 
-            'Content-Encoding': gzip.encoding,
-            Savings: `${gzipRatio}%` 
+            'Architecture / Format': '2. 32-bit Integer Array (int[1M] - 4 byte/px)', 
+            'Raw Size': `${int32Buffer.length.toLocaleString()} B (${fmtBytes(int32Buffer.length)})`, 
+            'Compressed (Brotli)': `${int32Brotli.length.toLocaleString()} B (${fmtBytes(int32Brotli.length)})`,
+            'Savings vs JSON Baseline': `${(((jsonEstimatedBytes - int32Buffer.length) / jsonEstimatedBytes) * 100).toFixed(2)}%`
         },
         { 
-            Method: 'Brotli (Modern Ultra)', 
-            'Wire Size': `${brotli.bytes.toLocaleString()} B (${fmtBytes(brotli.bytes)})`, 
-            Time: `${brotli.timeMs.toFixed(1)} ms`, 
-            'Content-Encoding': brotli.encoding,
-            Savings: `${brotliRatio}%` 
+            'Architecture / Format': '3. 8-bit Byte Array (byte[1M] - Uncompressed)', 
+            'Raw Size': `${uncompressed.bytes.toLocaleString()} B (${fmtBytes(uncompressed.bytes)})`, 
+            'Compressed (Brotli)': '-',
+            'Savings vs JSON Baseline': `${(((jsonEstimatedBytes - uncompressed.bytes) / jsonEstimatedBytes) * 100).toFixed(2)}%`
+        },
+        { 
+            'Architecture / Format': '4. 8-bit Byte Array + Gzip (HTTP Wire)', 
+            'Raw Size': `${uncompressed.bytes.toLocaleString()} B (${fmtBytes(uncompressed.bytes)})`, 
+            'Compressed (Brotli)': `${gzip.bytes.toLocaleString()} B (Gzip)`,
+            'Savings vs JSON Baseline': `${(((jsonEstimatedBytes - gzip.bytes) / jsonEstimatedBytes) * 100).toFixed(2)}%`
+        },
+        { 
+            'Architecture / Format': '5. 8-bit Byte Array + Brotli (CURRENT SYSTEM)', 
+            'Raw Size': `${uncompressed.bytes.toLocaleString()} B (${fmtBytes(uncompressed.bytes)})`, 
+            'Compressed (Brotli)': `${brotli.bytes.toLocaleString()} B (${fmtBytes(brotli.bytes)})`,
+            'Savings vs JSON Baseline': `${(((jsonEstimatedBytes - brotli.bytes) / jsonEstimatedBytes) * 100).toFixed(4)}%`
         }
     ]);
+
+    console.log('\n💡 DIRECT INTEGER (4-Byte) vs CURRENT SYSTEM COMPARISON:');
+    console.log(`• Sıkıştırmasız 4-Byte Int   : ${(int32Buffer.length / (1024 * 1024)).toFixed(2)} MB (${int32Buffer.length.toLocaleString()} bayt)`);
+    console.log(`• Sıkıştırmasız 1-Byte Array : ${(uncompressed.bytes / (1024 * 1024)).toFixed(2)} MB (${uncompressed.bytes.toLocaleString()} bayt)`);
+    console.log(`• Şu Anki Brotli Sistemi     : ${(brotli.bytes / 1024).toFixed(2)} KB (${brotli.bytes.toLocaleString()} bayt)`);
+    console.log(`• Net Tasarruf (4-Byte Int -> Brotli): %${(((int32Buffer.length - brotli.bytes) / int32Buffer.length) * 100).toFixed(4)} tasarruf!`);
 }
 
 function benchmarkWebSocketFraming() {

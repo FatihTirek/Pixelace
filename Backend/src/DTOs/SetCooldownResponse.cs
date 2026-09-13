@@ -1,4 +1,4 @@
 namespace Backend.src.DTOs
 {
-    public record SetCooldownResponse(bool Success, int CooldownSeconds, string Message);
+    public record SetCooldownResponse(int CooldownSeconds, string Message);
 }

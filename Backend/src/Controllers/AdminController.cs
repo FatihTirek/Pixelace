@@ -39,7 +39,7 @@ namespace Backend.src.Controllers
             service.CooldownSeconds = targetSeconds;
             await multiplexer.GetDatabase().StringSetAsync(Constants.RedisKeys.CooldownConfig, targetSeconds);
 
-            return Ok(new SetCooldownResponse(true, targetSeconds, $"Cooldown successfully updated to {targetSeconds} seconds."));
+            return Ok(new SetCooldownResponse(targetSeconds, $"Cooldown successfully updated to {targetSeconds} seconds."));
         }
 
         [HttpPost("reset-canvas")]
@@ -54,7 +54,7 @@ namespace Backend.src.Controllers
             Array.Fill(canvas, (byte)Constants.DefaultColorIndex);
             await multiplexer.GetDatabase().StringSetAsync(Constants.RedisKeys.Canvas, canvas);
 
-            return Ok(new { success = true, message = "Canvas successfully reset to blank white." });
+            return Ok(new { message = "Canvas successfully reset to blank white." });
         }
 
         private bool IsAuthorized()

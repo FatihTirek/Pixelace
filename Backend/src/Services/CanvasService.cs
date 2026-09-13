@@ -25,23 +25,26 @@ namespace Backend.src.Services
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                return new PlacePixelResponse(false, 0, "User identifier is required.");
+                return new PlacePixelResponse(0, ErrorMessage: "User identifier is required.");
             }
 
             int cooldownSeconds = configService.CooldownSeconds;
-            string cooldownKey = GetCooldownKey(userId);
-            bool acquired = await _redis.StringSetAsync(cooldownKey, "1", TimeSpan.FromSeconds(cooldownSeconds), When.NotExists);
-
-            if (!acquired)
+            if (cooldownSeconds > 0)
             {
-                var ttl = await _redis.KeyTimeToLiveAsync(cooldownKey);
-                int remainingSeconds = ttl.HasValue && ttl.Value.TotalSeconds > 0 ? (int)Math.Ceiling(ttl.Value.TotalSeconds) : 1;
+                string cooldownKey = GetCooldownKey(userId);
+                bool acquired = await _redis.StringSetAsync(cooldownKey, "1", TimeSpan.FromSeconds(cooldownSeconds), When.NotExists);
 
-                return new PlacePixelResponse(false, remainingSeconds, $"Cooldown is active. Please wait {remainingSeconds} seconds.");
+                if (!acquired)
+                {
+                    var ttl = await _redis.KeyTimeToLiveAsync(cooldownKey);
+                    int remainingSeconds = ttl.HasValue && ttl.Value.TotalSeconds > 0 ? (int)Math.Ceiling(ttl.Value.TotalSeconds) : 1;
+
+                    return new PlacePixelResponse(remainingSeconds, ErrorMessage: $"Cooldown is active. Please wait {remainingSeconds} seconds.");
+                }
             }
 
             await _redis.StringSetRangeAsync(Constants.RedisKeys.Canvas, request.CanvasIndex, new byte[] { (byte)request.ColorIndex });
-            return new PlacePixelResponse(true, cooldownSeconds, Pixel: new PixelResponse(request.CanvasIndex, request.ColorIndex));
+            return new PlacePixelResponse(cooldownSeconds, Pixel: new PixelResponse(request.CanvasIndex, request.ColorIndex));
         }
 
         public async Task<int> GetRemainingCooldownAsync(string userId)

@@ -11,7 +11,7 @@ namespace Backend.src.Hubs
         {
             var result = await service.TrySetPixelAsync(request, Context.UserIdentifier!);
 
-            if (result.Success && result.Pixel != null)
+            if (result.Pixel != null)
             {
                 await Clients.Others.ReceivePixel(result.Pixel);
             }

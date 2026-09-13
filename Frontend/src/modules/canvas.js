@@ -106,9 +106,9 @@ export async function placePixel() {
     const payload = { canvasIndex, colorIndex };
 
     const result = await connection.invoke('SendPixel', payload);
-    const isSuccess = result?.success ?? result?.Success;
     const cooldownSec = result?.remainingCooldownSeconds ?? result?.RemainingCooldownSeconds ?? 3;
     const errorMsg = result?.errorMessage ?? result?.ErrorMessage;
+    const isSuccess = !errorMsg && Boolean(result?.pixel ?? result?.Pixel);
 
     if (result && isSuccess) {
         drawPixelOnCanvas(canvasIndex, colorIndex);

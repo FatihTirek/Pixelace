@@ -123,7 +123,6 @@ curl -X POST "http://localhost:5000/api/admin/cooldown?seconds=10" \
 #### Successful Response (`200 OK`):
 ```json
 {
-  "success": true,
   "cooldownSeconds": 10,
   "message": "Cooldown successfully updated to 10 seconds."
 }
@@ -168,40 +167,29 @@ async function updateCooldown(newSeconds, adminSecret) {
   const response = await fetch('/api/admin/cooldown', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'X-Admin-Secret': adminSecret
-    },
-    body: JSON.stringify({ seconds: newSeconds })
-  });
+const response = await fetch("http://localhost:5000/api/admin/cooldown", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Admin-Secret": "pixelace-admin-secret-dev"
+  },
+  body: JSON.stringify({ seconds: 10 })
+});
 
-  const result = await response.json();
-  console.log(result);
-}
-
-// Reset canvas to white
-async function resetCanvas(adminSecret) {
-  const response = await fetch('/api/admin/reset-canvas', {
-    method: 'POST',
-    headers: {
-      'X-Admin-Secret': adminSecret
-    }
-  });
-
-  const result = await response.json();
-  console.log(result);
-}
+const data = await response.json();
+console.log(data);
 ```
 
 ---
 
-## 📡 REST & SignalR Endpoints
+## 🛠️ Complete API Reference
 
-### REST APIs
+### REST Endpoints
 
-| Method | Endpoint | Auth | Description |
+| Method | Route | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/canvas` | Public | Returns the complete 1000×1000 canvas state as a raw `application/octet-stream` (1 MB binary). |
-| `GET` | `/api/chat/messages?room={ROOM}` | Public | Fetches the recent 250 messages for a given room (e.g. `EN`, `TR`). |
+| `GET` | `/api/canvas` | Public | Retrieves current 1000×1000 binary canvas state (`application/octet-stream`). |
+| `GET` | `/api/chat/messages?room={code}` | Public | Retrieves recent 50 messages for a room. |
 | `GET` | `/api/admin/cooldown` | Admin | Retrieves current cooldown duration in seconds. |
 | `POST` | `/api/admin/cooldown` | Admin | Updates global cooldown duration (0 to 3600 seconds). |
 | `POST` | `/api/admin/reset-canvas` | Admin | Resets all 1,000,000 canvas pixels to default white (index 31). |
@@ -210,7 +198,7 @@ async function resetCanvas(adminSecret) {
 
 #### 1. Canvas Hub (`/hub/canvas?userId={guestId}`)
 - **Client Invokes**:
-  - `SendPixel({ canvasIndex, colorIndex })`: Validates bounds, cooldown, and updates canvas. Returns `{ success, remainingCooldownSeconds, errorMessage }`.
+  - `SendPixel({ canvasIndex, colorIndex })`: Validates bounds, cooldown, and updates canvas. Returns `{ remainingCooldownSeconds, errorMessage, pixel }`.
   - `GetRemainingCooldown()`: Returns remaining cooldown time for the caller in seconds.
 - **Server Broadcasts**:
   - `ReceivePixel(pixel)`: Broadcasts `{ canvasIndex, colorIndex }` to all connected clients.

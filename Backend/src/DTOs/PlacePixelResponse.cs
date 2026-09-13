@@ -1,4 +1,4 @@
 namespace Backend.src.DTOs
 {
-    public record PlacePixelResponse(bool Success, int RemainingCooldownSeconds, string? ErrorMessage = null, PixelResponse? Pixel = null);
+    public record PlacePixelResponse(int RemainingCooldownSeconds, string? ErrorMessage = null, PixelResponse? Pixel = null);
 }
