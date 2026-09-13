@@ -1,4 +1,10 @@
+using MessagePack;
+
 namespace Backend.src.DTOs
 {
-    public record PlacePixelResponse(int RemainingCooldownSeconds, string? ErrorMessage = null, PixelResponse? Pixel = null);
+    [MessagePackObject]
+    public record PlacePixelResponse(
+        [property: Key(0)] int CooldownSeconds,
+        [property: Key(1)] PixelResponse Pixel
+    );
 }

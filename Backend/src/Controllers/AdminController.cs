@@ -1,4 +1,3 @@
-using Backend.src.DTOs;
 using Backend.src.Services;
 using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
@@ -18,28 +17,27 @@ namespace Backend.src.Controllers
                 return Unauthorized(new { error = "Unauthorized. Invalid or missing X-Admin-Secret." });
             }
 
-            return Ok(new GetCooldownResponse(service.CooldownSeconds));
+            return Ok(new { cooldownSeconds = service.CooldownSeconds });
         }
 
         [HttpPost("cooldown")]
-        public async Task<IActionResult> SetCooldown([FromBody] SetCooldownRequest? body, [FromQuery] int? seconds)
+        public async Task<IActionResult> SetCooldown([FromQuery] int? seconds)
         {
             if (!IsAuthorized())
             {
                 return Unauthorized(new { error = "Unauthorized. Invalid or missing X-Admin-Secret." });
             }
 
-            int targetSeconds = body?.Seconds ?? seconds ?? -1;
-
-            if (targetSeconds < 0 || targetSeconds > 3600)
+            if (!seconds.HasValue || seconds.Value < 0 || seconds.Value > 3600)
             {
                 return BadRequest(new { error = "Cooldown must be between 0 and 3600 seconds." });
             }
 
+            int targetSeconds = seconds.Value;
             service.CooldownSeconds = targetSeconds;
             await multiplexer.GetDatabase().StringSetAsync(Constants.RedisKeys.CooldownConfig, targetSeconds);
 
-            return Ok(new SetCooldownResponse(targetSeconds, $"Cooldown successfully updated to {targetSeconds} seconds."));
+            return NoContent();
         }
 
         [HttpPost("reset-canvas")]
@@ -54,7 +52,7 @@ namespace Backend.src.Controllers
             Array.Fill(canvas, (byte)Constants.DefaultColorIndex);
             await multiplexer.GetDatabase().StringSetAsync(Constants.RedisKeys.Canvas, canvas);
 
-            return Ok(new { message = "Canvas successfully reset to blank white." });
+            return NoContent();
         }
 
         private bool IsAuthorized()

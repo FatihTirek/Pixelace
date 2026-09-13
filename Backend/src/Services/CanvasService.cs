@@ -25,7 +25,7 @@ namespace Backend.src.Services
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                return new PlacePixelResponse(0, ErrorMessage: "User identifier is required.");
+                throw new Microsoft.AspNetCore.SignalR.HubException("User identifier is required.");
             }
 
             int cooldownSeconds = configService.CooldownSeconds;
@@ -39,12 +39,12 @@ namespace Backend.src.Services
                     var ttl = await _redis.KeyTimeToLiveAsync(cooldownKey);
                     int remainingSeconds = ttl.HasValue && ttl.Value.TotalSeconds > 0 ? (int)Math.Ceiling(ttl.Value.TotalSeconds) : 1;
 
-                    return new PlacePixelResponse(remainingSeconds, ErrorMessage: $"Cooldown is active. Please wait {remainingSeconds} seconds.");
+                    throw new Microsoft.AspNetCore.SignalR.HubException($"Cooldown active! Please wait {remainingSeconds} seconds.");
                 }
             }
 
             await _redis.StringSetRangeAsync(Constants.RedisKeys.Canvas, request.CanvasIndex, new byte[] { (byte)request.ColorIndex });
-            return new PlacePixelResponse(cooldownSeconds, Pixel: new PixelResponse(request.CanvasIndex, request.ColorIndex));
+            return new PlacePixelResponse(cooldownSeconds, new PixelResponse(request.CanvasIndex, request.ColorIndex));
         }
 
         public async Task<int> GetRemainingCooldownAsync(string userId)

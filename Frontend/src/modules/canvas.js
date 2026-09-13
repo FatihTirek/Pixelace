@@ -22,7 +22,8 @@ const connectionBuilder = new signalR.HubConnectionBuilder()
     .withUrl(`${CANVAS_HUB}?userId=${encodeURIComponent(guestId)}`)
     .withAutomaticReconnect([0, 2000, 5000, 10000]);
 
-if (typeof signalR?.protocols?.msgpack?.MessagePackHubProtocol !== 'undefined') {
+const isMsgPack = typeof signalR?.protocols?.msgpack?.MessagePackHubProtocol !== 'undefined';
+if (isMsgPack) {
     connectionBuilder.withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol());
 }
 
@@ -52,8 +53,8 @@ export async function initializeCanvas() {
     await connection.start();
 
     connection.on('ReceivePixel', pixel => {
-        const cIndex = pixel.canvasIndex ?? pixel.CanvasIndex;
-        const colIndex = pixel.colorIndex ?? pixel.ColorIndex;
+        const cIndex = Array.isArray(pixel) ? pixel[0] : (pixel.canvasIndex ?? pixel.CanvasIndex);
+        const colIndex = Array.isArray(pixel) ? pixel[1] : (pixel.colorIndex ?? pixel.ColorIndex);
         drawPixelOnCanvas(cIndex, colIndex);
     });
     
@@ -103,20 +104,25 @@ export async function placePixel() {
 
     const colorIndex = Number(element.dataset.cindex);
     const canvasIndex = offset.x + CANVAS_SIZE * offset.y;
-    const payload = { canvasIndex, colorIndex };
+    const payload = isMsgPack ? [canvasIndex, colorIndex] : { canvasIndex, colorIndex };
 
-    const result = await connection.invoke('SendPixel', payload);
-    const cooldownSec = result?.remainingCooldownSeconds ?? result?.RemainingCooldownSeconds ?? 3;
-    const errorMsg = result?.errorMessage ?? result?.ErrorMessage;
-    const isSuccess = !errorMsg && Boolean(result?.pixel ?? result?.Pixel);
+    try {
+        const result = await connection.invoke('SendPixel', payload);
+        const cooldownSec = Array.isArray(result) 
+            ? result[0] 
+            : (result?.cooldownSeconds ?? result?.CooldownSeconds ?? 3);
 
-    if (result && isSuccess) {
         drawPixelOnCanvas(canvasIndex, colorIndex);
         closePalette();
         triggerCooldownCountdown(cooldownSec);
-    } else {
-        alert(errorMsg || `Cooldown active! Please wait ${cooldownSec} seconds.`);
-        triggerCooldownCountdown(cooldownSec);
+    } catch (err) {
+        const errorMsg = err?.message || 'Failed to place pixel.';
+        alert(errorMsg);
+        
+        // Cooldown hatası ise süreyi ayrıştırıp sayacı başlat
+        const match = errorMsg.match(/(\d+)\s*seconds/i);
+        const waitSec = match ? parseInt(match[1], 10) : 3;
+        triggerCooldownCountdown(waitSec);
     }
 }
 

@@ -1,4 +1,10 @@
+using MessagePack;
+
 namespace Backend.src.DTOs
 {
-    public record PixelResponse(int CanvasIndex, int ColorIndex);
+    [MessagePackObject]
+    public record PixelResponse(
+        [property: Key(0)] int CanvasIndex, 
+        [property: Key(1)] int ColorIndex
+    );
 }

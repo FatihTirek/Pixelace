@@ -44,13 +44,11 @@ console.log('='.repeat(75) + '\n');
 
 async function setServerCooldown(seconds) {
     try {
-        await fetch(`${targetUrl}/api/admin/cooldown`, {
+        await fetch(`${targetUrl}/api/admin/cooldown?seconds=${seconds}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-Admin-Secret': adminSecret
-            },
-            body: JSON.stringify({ seconds })
+            }
         });
     } catch (e) {
         console.warn(`  ⚠️ Could not set cooldown to ${seconds}s:`, e.message);
@@ -112,13 +110,12 @@ async function runProtocolTest(protocolName) {
             const colorIndex = Math.floor(Math.random() * 32);
             const t0 = performance.now();
 
-            return conn.invoke('SendPixel', { canvasIndex, colorIndex })
+            const payload = protocolName === 'MSGPACK' ? [canvasIndex, colorIndex] : { canvasIndex, colorIndex };
+            return conn.invoke('SendPixel', payload)
                 .then(res => {
                     const elapsed = performance.now() - t0;
                     latencies.push(elapsed);
-                    const isSuccess = !res?.errorMessage && !res?.ErrorMessage && Boolean(res?.pixel ?? res?.Pixel);
-                    if (isSuccess) pixelsPlacedSuccess++;
-                    else pixelsFailed++;
+                    pixelsPlacedSuccess++;
                 })
                 .catch(() => { pixelsFailed++; });
         });

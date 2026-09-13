@@ -93,40 +93,18 @@ curl -X GET "http://localhost:5000/api/admin/cooldown" \
 ### 2. Set / Update Cooldown
 Sets a new cooldown duration between `0` and `3600` seconds.
 
-- **Endpoint**: `POST /api/admin/cooldown`
+- **Endpoint**: `POST /api/admin/cooldown?seconds={seconds}`
 - **Headers**:
-  - `Content-Type: application/json`
   - `X-Admin-Secret: <YOUR_ADMIN_SECRET>`
-- **Body Options**:
 
-#### Option A: JSON Body (Recommended)
-```json
-{
-  "seconds": 10
-}
-```
-
-#### cURL Example (JSON Body):
-```bash
-curl -X POST "http://localhost:5000/api/admin/cooldown" \
-     -H "Content-Type: application/json" \
-     -H "X-Admin-Secret: pixelace-admin-secret-dev" \
-     -d '{"seconds": 10}'
-```
-
-#### Option B: Query Parameter
+#### cURL Example:
 ```bash
 curl -X POST "http://localhost:5000/api/admin/cooldown?seconds=10" \
      -H "X-Admin-Secret: pixelace-admin-secret-dev"
 ```
 
-#### Successful Response (`200 OK`):
-```json
-{
-  "cooldownSeconds": 10,
-  "message": "Cooldown successfully updated to 10 seconds."
-}
-```
+#### Successful Response (`204 No Content`):
+*No body returned.*
 
 #### Invalid Value Response (`400 Bad Request`):
 ```json
@@ -150,13 +128,8 @@ curl -X POST "http://localhost:5000/api/admin/reset-canvas" \
      -H "X-Admin-Secret: pixelace-admin-secret-dev"
 ```
 
-#### Successful Response (`200 OK`):
-```json
-{
-  "success": true,
-  "message": "Canvas successfully reset to blank white."
-}
-```
+#### Successful Response (`204 No Content`):
+*No body returned.*
 
 ---
 
