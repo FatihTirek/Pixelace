@@ -21,7 +21,7 @@ namespace Backend.src.Services
             return canvas;
         }
 
-        public async Task<PlacePixelResponse> TrySetPixelAsync(PlacePixelRequest request, string userId)
+        public async Task<int> TrySetPixelAsync(PlacePixelRequest request, string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
@@ -44,7 +44,7 @@ namespace Backend.src.Services
             }
 
             await _redis.StringSetRangeAsync(Constants.RedisKeys.Canvas, request.CanvasIndex, new byte[] { (byte)request.ColorIndex });
-            return new PlacePixelResponse(cooldownSeconds, new PixelResponse(request.CanvasIndex, request.ColorIndex));
+            return cooldownSeconds;
         }
 
         public async Task<int> GetRemainingCooldownAsync(string userId)

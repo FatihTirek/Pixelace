@@ -18,16 +18,11 @@ const canvasEl = document.getElementById('canvas');
 const ctx = canvasEl.getContext('2d');
 
 const guestId = getOrCreateGuestId();
-const connectionBuilder = new signalR.HubConnectionBuilder()
+const connection = new signalR.HubConnectionBuilder()
     .withUrl(`${CANVAS_HUB}?userId=${encodeURIComponent(guestId)}`)
-    .withAutomaticReconnect([0, 2000, 5000, 10000]);
-
-const isMsgPack = typeof signalR?.protocols?.msgpack?.MessagePackHubProtocol !== 'undefined';
-if (isMsgPack) {
-    connectionBuilder.withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol());
-}
-
-const connection = connectionBuilder.build();
+    .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+    .withAutomaticReconnect([0, 2000, 5000, 10000])
+    .build();
 
 const uint32 = new Uint32Array(CANVAS_SIZE ** 2);
 
@@ -52,10 +47,12 @@ export async function initializeCanvas() {
 
     await connection.start();
 
-    connection.on('ReceivePixel', pixel => {
-        const cIndex = Array.isArray(pixel) ? pixel[0] : (pixel.canvasIndex ?? pixel.CanvasIndex);
-        const colIndex = Array.isArray(pixel) ? pixel[1] : (pixel.colorIndex ?? pixel.ColorIndex);
-        drawPixelOnCanvas(cIndex, colIndex);
+    connection.on('ReceivePixel', bytes => {
+        if (bytes && bytes.length >= 4) {
+            const cIndex = (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
+            const colIndex = bytes[3];
+            drawPixelOnCanvas(cIndex, colIndex);
+        }
     });
     
     // Only resync if connection was actually lost and re-established
@@ -104,13 +101,17 @@ export async function placePixel() {
 
     const colorIndex = Number(element.dataset.cindex);
     const canvasIndex = offset.x + CANVAS_SIZE * offset.y;
-    const payload = isMsgPack ? [canvasIndex, colorIndex] : { canvasIndex, colorIndex };
+
+    // Pack into 4 bytes: 24-bit canvas index (big-endian) + 8-bit color index
+    const bytes = new Uint8Array([
+        (canvasIndex >> 16) & 0xFF,
+        (canvasIndex >> 8) & 0xFF,
+        canvasIndex & 0xFF,
+        colorIndex
+    ]);
 
     try {
-        const result = await connection.invoke('SendPixel', payload);
-        const cooldownSec = Array.isArray(result) 
-            ? result[0] 
-            : (result?.cooldownSeconds ?? result?.CooldownSeconds ?? 3);
+        const cooldownSec = await connection.invoke('SendPixel', bytes);
 
         drawPixelOnCanvas(canvasIndex, colorIndex);
         closePalette();
