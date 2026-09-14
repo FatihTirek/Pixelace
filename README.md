@@ -170,11 +170,12 @@ console.log(data);
 ### SignalR Hubs
 
 #### 1. Canvas Hub (`/hub/canvas?userId={guestId}`)
+- **Protocol**: Pure 4-Byte Binary (`Uint8Array` via SignalR MessagePack protocol)
 - **Client Invokes**:
-  - `SendPixel({ canvasIndex, colorIndex })`: Validates bounds, cooldown, and updates canvas. Returns `{ remainingCooldownSeconds, errorMessage, pixel }`.
-  - `GetRemainingCooldown()`: Returns remaining cooldown time for the caller in seconds.
+  - `SendPixel(byte[4])`: Sends a 4-byte packed binary payload: `[index_high, index_mid, index_low, color_index]`. Validates bounds, cooldown, and updates canvas in Redis via `SETRANGE`. Returns primitive `int` (cooldown seconds remaining).
+  - `GetRemainingCooldown()`: Returns remaining cooldown time for the caller in seconds (`int`).
 - **Server Broadcasts**:
-  - `ReceivePixel(pixel)`: Broadcasts `{ canvasIndex, colorIndex }` to all connected clients.
+  - `ReceivePixel(byte[4])`: Broadcasts the exact 4-byte binary payload to all other connected clients.
 
 #### 2. Chat Hub (`/hub/chat?userId={guestId}`)
 - **Client Invokes**:
@@ -260,6 +261,30 @@ cd Pixelace
    npm run bundle-js
    ```
 4. Open `Frontend/dist/index.html` in your browser (or serve it with Live Server / Nginx).
+
+---
+
+## 🧪 Benchmarking & Load Testing
+
+Pixelace includes automated benchmarking and stress testing scripts to reproduce network and throughput metrics locally:
+
+### 1. Network Wire Protocol & Compression Benchmark
+Measures payload sizes, compression ratios (Brotli/Gzip), and network savings across protocols:
+```bash
+node scripts/wire-benchmark.mjs
+```
+
+### 2. Live Production Traffic Simulator (High CCU Stress Test)
+Simulates realistic multi-user concurrent traffic placing pixels and receiving broadcasts over WebSockets:
+```bash
+# Run simulation with 500 concurrent users for 10 seconds:
+node scripts/production-simulator.mjs --users 500 --duration 10
+
+# Extreme Stress Test (2,000 CCU - matches official benchmark):
+node scripts/production-simulator.mjs --users 2000 --duration 10
+```
+
+Official hardware-stamped test reports are archived in [`benchmarks/`](./benchmarks/).
 
 ---
 
